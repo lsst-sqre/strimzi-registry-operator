@@ -20,6 +20,7 @@ readme = Path(__file__).parent / 'README.rst'
 
 # Core dependencies
 install_requires = [
+    'kopf==0.21'
 ]
 
 # Test dependencies
