@@ -2,11 +2,72 @@
 based on the cluster's CA cert and the KafkaUser's key.
 """
 
-__all__ = ('create_truststore', 'create_keystore')
+__all__ = ('get_cluster_ca_cert', 'get_user_certs', 'create_truststore',
+           'create_keystore')
 
+import base64
 from pathlib import Path
 import subprocess
 import tempfile
+
+
+def get_cluster_ca_cert(*, namespace, cluster, k8s_client):
+    """Get the cluster's CA cert from the ``<cluster>-cluster-ca-cert``
+    Kubernetes secret.
+
+    Parameters
+    ----------
+    namespace : `str`
+        The Kubernetes namespace where the Strimzi Kafka cluster operates.
+    cluster : `str`
+        The name of the Strimzi Kafka cluster.
+    k8s_client
+        A Kubernetes client (see
+        `strimziregistryoperator.k8stools.create_k8sclient`).
+
+    Returns
+    -------
+    cert : `str`
+        The decoded contents of the CA cert. This can be passed to the
+        `create_truststore` function.
+    """
+    v1_api = k8s_client.CoreV2Api()
+    name = f'{cluster}-cluster-ca-cert'
+    secret = v1_api.read_namespaced_secret(name, namespace)
+    return base64.b64decode(secret.data['ca.crt']).decode('utf-8')
+
+
+def get_user_certs(*, namespace, username, k8s_client):
+    """Get the KafkaUser's certificates and key from its corresponding
+    Kubernetes secret.
+
+    Parameters
+    ----------
+    namespace : `str`
+        The Kubernetes namespace where the Strimzi Kafka cluster operates.
+    username : `str`
+        The name of the KafkaUser, which is also the name of its corresponding
+        Secret resource created by the Strimzi user operator.
+    k8s_client
+        A Kubernetes client (see
+        `strimziregistryoperator.k8stools.create_k8sclient`).
+
+    Returns
+    -------
+    certs : `dict`
+        A dictionary with the decoded (`str`) contents of the certs and
+        private key. The dictionary key names are:
+
+        - ``'ca.crt'``
+        - ``'user.crt'``
+        - ``'user.key'``
+
+        These can be passed to the `create_keystore` function.
+    """
+    v1_api = k8s_client.CoreV2Api()
+    secret = v1_api.read_namespaced_secret(username, namespace)
+    return {k: base64.b64decode(secret.data[k]).decode('utf-8')
+            for k in ('ca.crt', 'user.crt', 'user.key')}
 
 
 def create_truststore(cert, password):
@@ -17,7 +78,8 @@ def create_truststore(cert, password):
     cert : `str`
         The content of the Kafka cluster CA certificate. You can get this from
         a Kubernetes Secret named ``<cluster>-cluster-ca-cert``, and
-        specifially the secret key named ``ca.crt``.
+        specifially the secret key named ``ca.crt``. See
+        `get_cluster_ca_cert`.
     password : `str`
         Password to protect the output truststore (``truststore_content``)
         with.
@@ -81,15 +143,15 @@ def create_keystore(user_ca_cert, user_cert, user_key, password):
     user_ca_cert : `str`
         The content of the KafkaUser's CA certificate. You can get this from
         the Kubernetes Secret named after the KafkaUser and specifically the
-        ``ca.crt`` field.
+        ``ca.crt`` field. See the `get_user_certs` function.
     user_cert : `str`
         The content of the KafkaUser's certificate. You can get this from
         the Kubernetes Secret named after the KafkaUser and specifically the
-        ``user.crt`` field.
+        ``user.crt`` field. See the `get_user_certs` function.
     user_key : `str`
         The content of the KafkaUser's private key. You can get this from
         the Kubernetes Secret named after the KafkaUser and specifically the
-        ``user.key`` field.
+        ``user.key`` field. See the `get_user_certs` function.
     password : `str`
         Password to protect the output keystore (``keystore_content``)
         with.
