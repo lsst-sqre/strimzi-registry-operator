@@ -3,3 +3,5 @@ kind: Kustomization
 
 resources:
   - registry-crd.yaml
+  - rbac.yaml
+  - deployment.yaml

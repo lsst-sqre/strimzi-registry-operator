@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: strimzi-registry-operator
+spec:
+  replicas: 1  # do not change to >1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: strimzi-registry-operator
+  template:
+    metadata:
+      labels:
+        app: strimzi-registry-operator
+    spec:
+      serviceAccountName: strimzi-registry-operator
+      containers:
+        - name: operator
+          image: lsstsqre/strimzi-registry-operator:build
+          imagePullPolicy: Always
