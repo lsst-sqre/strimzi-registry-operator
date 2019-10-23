@@ -7,6 +7,12 @@ cluster_name = 'events'
 TODO: make this configurable.
 """
 
+namespace = 'events'
+"""The name of the Kubernetes namespace monitored by this operator.
+
+TODO: make this configurable.
+"""
+
 
 registry_names = set()
 """Cache of StrimziSchemaRegistry names being tracked.

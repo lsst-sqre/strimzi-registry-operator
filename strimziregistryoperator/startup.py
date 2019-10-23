@@ -9,7 +9,7 @@ from . import state
 from .k8stools import create_k8sclient
 
 
-def start_operator(*, namespace):
+def start_operator():
     """Start up the operator, priming its cache of the application state.
     """
     api = create_k8sclient().CustomObjectsApi()
@@ -18,7 +18,7 @@ def start_operator(*, namespace):
         response = api.list_namespaced_custom_object(
             'roundtable.lsst.codes',
             'v1beta1',
-            namespace,
+            state.namespace,
             'strimzischemaregistries',
             timeout_seconds=60)
     except ApiException as e:
