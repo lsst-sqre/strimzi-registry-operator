@@ -117,12 +117,16 @@ def user_key():
 
 
 def test_create_truststore(cluster_ca_cert):
-    truststore = create_truststore(cluster_ca_cert, 'test1234')
+    truststore, password = create_truststore(cluster_ca_cert,
+                                             password='test1234')
     assert isinstance(truststore, bytes)
     assert len(truststore) > 0
+    assert password == 'test1234'
 
 
 def test_create_keystore(user_ca_cert, user_cert, user_key):
-    keystore = create_keystore(user_ca_cert, user_cert, user_key, 'test1234')
+    keystore, password = create_keystore(user_ca_cert, user_cert, user_key,
+                                         password='test1234')
     assert isinstance(keystore, bytes)
     assert len(keystore) > 0
+    assert password == 'test1234'
