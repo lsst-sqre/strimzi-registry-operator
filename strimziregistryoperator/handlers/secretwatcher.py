@@ -15,6 +15,9 @@ from .. import state
 @kopf.on.event('', 'v1', 'secrets')
 def handle_secret_change(spec, meta, namespace, name, uid, event, body, logger,
                          **kwargs):
+    """Handle changes in secrets managed by Strimzi for the
+    KafkaUser corresponding to a StrimziSchemaRegistry deployment.
+    """
     logger.info(f'Detected secret change: "{name}" ({event["type"]})')
 
     # Act only on Secrets that have been created or updated
@@ -54,7 +57,7 @@ def refresh_with_new_cluster_ca(*, cluster_ca_secret, namespace, logger):
         cluster = cluster_ca_secret['metadata']['labels']['strimzi.io/cluster']
 
         create_secret(
-            registry_name=registry_name,
+            kafka_username=registry_name,
             namespace=namespace,
             cluster=cluster,
             k8s_client=k8s_client,
@@ -67,11 +70,11 @@ def refresh_with_new_cluster_ca(*, cluster_ca_secret, namespace, logger):
 def refresh_with_new_client_secret(*, kafkauser_secret, namespace, logger):
     k8s_client = create_k8sclient()
 
-    registry_name = kafkauser_secret['metadata']['name']
+    kafka_username = kafkauser_secret['metadata']['name']
     cluster = kafkauser_secret['metadata']['labels']['strimzi.io/cluster']
 
     create_secret(
-        registry_name=registry_name,
+        kafka_username=kafka_username,
         namespace=namespace,
         cluster=cluster,
         k8s_client=k8s_client,

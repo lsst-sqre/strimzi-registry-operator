@@ -20,6 +20,7 @@ readme = Path(__file__).parent / 'README.rst'
 
 # Core dependencies
 install_requires = [
+    'PyYAML==5.1.2',
     'kopf==0.21',
     'kubernetes==10.0.1',
 ]

@@ -14,15 +14,15 @@ import secrets
 import tempfile
 
 
-def create_secret(*, registry_name, namespace, cluster, k8s_client,
+def create_secret(*, kafka_username, namespace, cluster, k8s_client,
                   cluster_ca_secret=None, client_secret=None):
     """Create and deploy a new Secret for the StrimziSchemaRegistry with
     JKS-formatted key and truststores.
 
     Parameters
     ----------
-    registry_name : `str`
-        Name of the associated StrimziSchemaRegistry.
+    kafka_username : `str`
+        Name of the associated KafkaUser.
     namespace : `str`
         The name of the Kubernetes namespace where the Strimzi Kafka cluster
         operates.
@@ -49,7 +49,9 @@ def create_secret(*, registry_name, namespace, cluster, k8s_client,
 
     if client_secret is None:
         client_secret = get_client_secret(
-            namespace=namespace, username=registry_name, k8s_client=k8s_client)
+            namespace=namespace,
+            username=kafka_username,
+            k8s_client=k8s_client)
     client_secret_version = client_secret['metadata']['resourceVersion']
     client_ca_cert = decode_secret_field(
         client_secret['data']['ca.crt'])
@@ -64,7 +66,7 @@ def create_secret(*, registry_name, namespace, cluster, k8s_client,
 
     api_instance = k8s_client.CoreV1Api()
     secret = k8s_client.V1Secret()
-    secret.metadata = k8s_client.V1ObjectMeta(name=f'{registry_name}-jks')
+    secret.metadata = k8s_client.V1ObjectMeta(name=f'{kafka_username}-jks')
     secret.metadata.annotations = {
         'strimziregistryoperator.roundtable.lsst.codes/caSecretVersion':
             cluster_secret_version,
@@ -81,7 +83,9 @@ def create_secret(*, registry_name, namespace, cluster, k8s_client,
             keystore_password.encode('utf-8')),
     }
 
-    api_instance.create_namespaced_secret(namespace=namespace, body=secret)
+    return api_instance.create_namespaced_secret(
+        namespace=namespace,
+        body=secret)
 
 
 def get_cluster_ca_secret(*, namespace, cluster, k8s_client):
