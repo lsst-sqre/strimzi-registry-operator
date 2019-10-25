@@ -68,12 +68,12 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
     api_instance = k8s_client.CoreV1Api()
     secret = k8s_client.V1Secret()
     secret.metadata = k8s_client.V1ObjectMeta(name=f'{kafka_username}-jks')
-    secret.metadata.annotations = {
-        'strimziregistryoperator.roundtable.lsst.codes/caSecretVersion':
-            cluster_secret_version,
-        'strimziregistryoperator.roundtable.lsst.codes/clientSecretVersion':
-            client_secret_version,
-    }
+    # secret.metadata.annotations = {
+    #     'strimziregistryoperator.roundtable.lsst.codes/caSecretVersion':
+    #         cluster_secret_version,
+    #     'strimziregistryoperator.roundtable.lsst.codes/clientSecretVersion':
+    #         client_secret_version,
+    # }
     secret.type = "Opaque"
     secret.data = {
         "truststore.jks": base64.b64encode(truststore),
