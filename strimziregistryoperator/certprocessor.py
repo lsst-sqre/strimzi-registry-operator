@@ -7,6 +7,7 @@ __all__ = ('create_secret', 'get_cluster_ca_secret', 'get_client_secret',
 
 import base64
 from functools import lru_cache
+import json
 from pathlib import Path
 import subprocess
 import string
@@ -83,9 +84,11 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
             keystore_password.encode('utf-8')),
     }
 
-    return api_instance.create_namespaced_secret(
+    api_instance.create_namespaced_secret(
         namespace=namespace,
         body=secret)
+
+    return api_instance.api_client.sanitize_for_serialization(secret)
 
 
 def get_cluster_ca_secret(*, namespace, cluster, k8s_client):
@@ -108,7 +111,8 @@ def get_cluster_ca_secret(*, namespace, cluster, k8s_client):
     """
     v1_api = k8s_client.CoreV1Api()
     name = f'{cluster}-cluster-ca-cert'
-    return v1_api.read_namespaced_secret(name, namespace)
+    return json.loads(v1_api.read_namespaced_secret(
+        name, namespace, _preload_content=False).data)
 
 
 def get_client_secret(*, namespace, username, k8s_client):
@@ -131,7 +135,8 @@ def get_client_secret(*, namespace, username, k8s_client):
         The Kubernetes Secret resource.
     """
     v1_api = k8s_client.CoreV1Api()
-    return v1_api.read_namespaced_secret(username, namespace)
+    return json.loads(v1_api.read_namespaced_secret(
+        username, namespace, _preload_content=False).data)
 
 
 def decode_secret_field(value):
