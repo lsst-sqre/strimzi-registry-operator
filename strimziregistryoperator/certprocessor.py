@@ -76,12 +76,12 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
     # }
     secret.type = "Opaque"
     secret.data = {
-        "truststore.jks": base64.b64encode(truststore),
-        "keystore.jks": base64.b64encode(keystore),
+        "truststore.jks": base64.b64encode(truststore).decode('utf-8'),
+        "keystore.jks": base64.b64encode(keystore).decode('utf-8'),
         "truststore_password": base64.b64encode(
-            truststore_password.encode('utf-8')),
+            truststore_password.encode('utf-8')).decode('utf-8'),
         "keystore_password": base64.b64encode(
-            keystore_password.encode('utf-8')),
+            keystore_password.encode('utf-8')).decode('utf-8'),
     }
 
     api_instance.create_namespaced_secret(
