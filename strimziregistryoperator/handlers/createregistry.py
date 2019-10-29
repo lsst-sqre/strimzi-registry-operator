@@ -62,7 +62,7 @@ def create_registry(spec, meta, namespace, name, uid, logger, **kwargs):
             k8s_client=k8s_client)
         deployment_exists = True
     except Exception:
-        pass
+        logger.exception('Did not retrieve existing deployment')
 
     # Create the Schema Registry deployment
     if not deployment_exists:
@@ -85,7 +85,7 @@ def create_registry(spec, meta, namespace, name, uid, logger, **kwargs):
             k8s_client=k8s_client)
         service_exists = True
     except Exception:
-        pass
+        logger.exception('Did not retrieve existing service')
 
     # Create the http service to access the Schema Registry REST API
     if not service_exists:
