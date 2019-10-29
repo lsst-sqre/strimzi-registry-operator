@@ -3,7 +3,7 @@
 
 import kopf
 
-from ..k8stools import create_k8sclient
+from ..k8stools import create_k8sclient, get_deployment, get_service
 from ..certprocessor import create_secret
 from ..deployments import (get_cluster_tls_listener, create_deployment,
                            create_service)
@@ -52,25 +52,52 @@ def create_registry(spec, meta, namespace, name, uid, logger, **kwargs):
     )
     secret_name = secret['metadata']['name']
 
+    deployment_exists = False
+    service_exists = False
+
+    try:
+        get_deployment(
+            name=name,
+            namespace=namespace,
+            k8s_client=k8s_client)
+        deployment_exists = True
+    except Exception:
+        pass
+
     # Create the Schema Registry deployment
-    dep_body = create_deployment(
-        name=name,
-        bootstrap_server=bootstrap_server,
-        secret_name=secret_name)
-    dep_response = k8s_apps_v1_api.create_namespaced_deployment(
-        body=dep_body,
-        namespace=namespace
-    )
-    logger.debug(str(dep_response))
+    if not deployment_exists:
+        dep_body = create_deployment(
+            name=name,
+            bootstrap_server=bootstrap_server,
+            secret_name=secret_name)
+        dep_response = k8s_apps_v1_api.create_namespaced_deployment(
+            body=dep_body,
+            namespace=namespace
+        )
+        logger.debug(str(dep_response))
+    else:
+        logger.info('Deployment already exists')
+
+    try:
+        get_service(
+            name=name,
+            namespace=namespace,
+            k8s_client=k8s_client)
+        service_exists = True
+    except Exception:
+        pass
 
     # Create the http service to access the Schema Registry REST API
-    svc_body = create_service(
-        name=name)
-    svc_response = k8s_core_v1_api.create_namespaced_service(
-        body=svc_body,
-        namespace=namespace
-    )
-    logger.debug(str(svc_response))
+    if not service_exists:
+        svc_body = create_service(
+            name=name)
+        svc_response = k8s_core_v1_api.create_namespaced_service(
+            body=svc_body,
+            namespace=namespace
+        )
+        logger.debug(str(svc_response))
+    else:
+        logger.info('Service already exists')
 
     # Add the name of the registry to the cache
     state.registry_names.add(name)
