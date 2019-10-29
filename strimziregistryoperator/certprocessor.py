@@ -2,8 +2,8 @@
 based on the cluster's CA cert and the KafkaUser's key.
 """
 
-__all__ = ('create_secret', 'get_cluster_ca_secret', 'get_client_secret',
-           'create_truststore', 'create_keystore')
+__all__ = ('create_secret', 'get_secret', 'create_truststore',
+           'create_keystore')
 
 import base64
 from functools import lru_cache
@@ -42,16 +42,18 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
         not set, this resource will be retrieved automatically for you.
     """
     if cluster_ca_secret is None:
-        cluster_ca_secret = get_cluster_ca_secret(
-            namespace=namespace, cluster=cluster, k8s_client=k8s_client)
+        cluster_ca_secret = get_secret(
+            namespace=namespace,
+            name=f'{cluster}-cluster-ca-cert',
+            k8s_client=k8s_client)
     cluster_secret_version = cluster_ca_secret['metadata']['resourceVersion']
     cluster_ca_cert = decode_secret_field(
         cluster_ca_secret['data']['ca.crt'])
 
     if client_secret is None:
-        client_secret = get_client_secret(
+        client_secret = get_secret(
             namespace=namespace,
-            username=kafka_username,
+            name=kafka_username,
             k8s_client=k8s_client)
     client_secret_version = client_secret['metadata']['resourceVersion']
     client_ca_cert = decode_secret_field(
@@ -91,32 +93,8 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
     return api_instance.api_client.sanitize_for_serialization(secret)
 
 
-def get_cluster_ca_secret(*, namespace, cluster, k8s_client):
-    """Get the cluster's CA cert Secret (named ``<cluster>-cluster-ca-cert``).
-
-    Parameters
-    ----------
-    namespace : `str`
-        The Kubernetes namespace where the Strimzi Kafka cluster operates.
-    cluster : `str`
-        The name of the Strimzi Kafka cluster.
-    k8s_client
-        A Kubernetes client (see
-        `strimziregistryoperator.k8stools.create_k8sclient`).
-
-    Returns
-    -------
-    secret : `dict`
-        The Kubernetes Secret resource.
-    """
-    v1_api = k8s_client.CoreV1Api()
-    name = f'{cluster}-cluster-ca-cert'
-    return json.loads(v1_api.read_namespaced_secret(
-        name, namespace, _preload_content=False).data)
-
-
-def get_client_secret(*, namespace, username, k8s_client):
-    """Get the Secret resource created by Strimzi for a KafkaUser.
+def get_secret(*, namespace, name, k8s_client):
+    """Get a Secret resource.
 
     Parameters
     ----------
@@ -136,7 +114,7 @@ def get_client_secret(*, namespace, username, k8s_client):
     """
     v1_api = k8s_client.CoreV1Api()
     return json.loads(v1_api.read_namespaced_secret(
-        username, namespace, _preload_content=False).data)
+        name, namespace, _preload_content=False).data)
 
 
 def decode_secret_field(value):
