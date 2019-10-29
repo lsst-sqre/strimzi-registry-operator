@@ -47,7 +47,8 @@ def create_registry(spec, meta, namespace, name, uid, logger, **kwargs):
         kafka_username=name,  # assume the StrimziSchemaRegistry name matches
         namespace=namespace,
         cluster=cluster_name,
-        k8s_client=k8s_client
+        k8s_client=k8s_client,
+        logger=logger
     )
     secret_name = secret['metadata']['name']
 

@@ -19,6 +19,7 @@ def handle_secret_change(spec, meta, namespace, name, uid, event, body, logger,
     KafkaUser corresponding to a StrimziSchemaRegistry deployment.
     """
     logger.info(f'Detected secret change: "{name}" ({event["type"]})')
+    logger.info(f'Type\'s type {type(event["type"])}')
 
     # Act only on Secrets that have been created or updated
     # FIXME check these event names
@@ -61,7 +62,8 @@ def refresh_with_new_cluster_ca(*, cluster_ca_secret, namespace, logger):
             namespace=namespace,
             cluster=cluster,
             k8s_client=k8s_client,
-            cluster_ca_secret=cluster_ca_secret
+            cluster_ca_secret=cluster_ca_secret,
+            logger=logger
         )
 
         # TODO now restart the schema registry pods
@@ -78,7 +80,8 @@ def refresh_with_new_client_secret(*, kafkauser_secret, namespace, logger):
         namespace=namespace,
         cluster=cluster,
         k8s_client=k8s_client,
-        client_secret=kafkauser_secret
+        client_secret=kafkauser_secret,
+        logger=logger
     )
 
     # TODO now restart the schema registry pods

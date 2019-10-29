@@ -8,6 +8,7 @@ __all__ = ('create_secret', 'get_secret', 'create_truststore',
 import base64
 from functools import lru_cache
 import json
+import logging
 from pathlib import Path
 import subprocess
 import string
@@ -16,7 +17,7 @@ import tempfile
 
 
 def create_secret(*, kafka_username, namespace, cluster, k8s_client,
-                  cluster_ca_secret=None, client_secret=None):
+                  cluster_ca_secret=None, client_secret=None, logger=None):
     """Create and deploy a new Secret for the StrimziSchemaRegistry with
     JKS-formatted key and truststores.
 
@@ -41,6 +42,9 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
         for the KafkaUser. This secret is named after ``registry_name``. If
         not set, this resource will be retrieved automatically for you.
     """
+    if logger is None:
+        logger = logger.getLogger(__name__)
+
     key_prefix = 'strimziregistryoperator.roundtable.lsst.codes'
     ca_version_key = f'{key_prefix}/caSecretVersion'
     user_version_key = f'{key_prefix}/clientSecretVersion'
@@ -50,7 +54,9 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
             namespace=namespace,
             name=f'{cluster}-cluster-ca-cert',
             k8s_client=k8s_client)
+        logger.info('Retrieved cluster CA certificate')
     cluster_secret_version = cluster_ca_secret['metadata']['resourceVersion']
+    logger.info(f'Cluster CA certificate version: {cluster_secret_version}')
     cluster_ca_cert = decode_secret_field(
         cluster_ca_secret['data']['ca.crt'])
 
@@ -59,7 +65,9 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
             namespace=namespace,
             name=kafka_username,
             k8s_client=k8s_client)
+        logger.info('Retrieved cluster CA certificate')
     client_secret_version = client_secret['metadata']['resourceVersion']
+    logger.info(f'Client certification version: {client_secret_version}')
     client_ca_cert = decode_secret_field(
         client_secret['data']['ca.crt'])
     client_cert = decode_secret_field(
@@ -72,24 +80,32 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
         jks_secret = get_secret(
             namespace=namespace,
             name=jks_secret_name,
+            k8s_client=k8s_client
         )
+        logger.info('Got JKS secret')
 
         if jks_secret['metadata']['annotations'][ca_version_key] \
                 == cluster_secret_version and \
                 jks_secret['metadata']['annotations'][user_version_key] \
                 == client_secret_version:
             # No need to build a new secret
+            logger.info('JKS secret is up-to-date')
             return jks_secret
     except Exception:
         # Either the secret doesn't exist yet or it is outdated
+        logger.exception('Couldn\'t check JKS secret; replacing it.')
         pass
 
     # Try to delete the old secret (if it exists)
     try:
+        logger.info('About to delete JKS secret')
         delete_secret(
             namespace=namespace,
-            name=jks_secret_name)
+            name=jks_secret_name,
+            k8s_client=k8s_client)
+        logger.info('Deleted JKS secret')
     except Exception:
+        logger.exception('Something failed with deleting JKS secret')
         pass
 
     truststore, truststore_password = create_truststore(cluster_ca_cert)
@@ -117,6 +133,8 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
     api_instance.create_namespaced_secret(
         namespace=namespace,
         body=secret)
+
+    logger.info('Created new JKS secret')
 
     return api_instance.api_client.sanitize_for_serialization(secret)
 
