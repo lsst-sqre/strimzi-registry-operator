@@ -41,6 +41,10 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
         for the KafkaUser. This secret is named after ``registry_name``. If
         not set, this resource will be retrieved automatically for you.
     """
+    key_prefix = 'strimziregistryoperator.roundtable.lsst.codes'
+    ca_version_key = f'{key_prefix}/caSecretVersion'
+    user_version_key = f'{key_prefix}/clientSecretVersion'
+
     if cluster_ca_secret is None:
         cluster_ca_secret = get_secret(
             namespace=namespace,
@@ -63,19 +67,35 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
     client_key = decode_secret_field(
         client_secret['data']['user.key'])
 
+    jks_secret_name = f'{kafka_username}-jks'
+    try:
+        jks_secret = get_secret(
+            namespace=namespace,
+            name=jks_secret_name,
+        )
+
+        if jks_secret['metadata']['annotations'][ca_version_key] \
+                == cluster_secret_version and \
+                jks_secret['metadata']['annotations'][user_version_key] \
+                == client_secret_version:
+            # No need to build a new secret
+            return jks_secret
+    except Exception:
+        # Either the secret doesn't exist yet or it is outdated
+        pass
+
     truststore, truststore_password = create_truststore(cluster_ca_cert)
     keystore, keystore_password = create_keystore(client_ca_cert, client_cert,
                                                   client_key)
 
+    # Build a new JKS-formatted secret
     api_instance = k8s_client.CoreV1Api()
     secret = k8s_client.V1Secret()
-    secret.metadata = k8s_client.V1ObjectMeta(name=f'{kafka_username}-jks')
-    # secret.metadata.annotations = {
-    #     'strimziregistryoperator.roundtable.lsst.codes/caSecretVersion':
-    #         cluster_secret_version,
-    #     'strimziregistryoperator.roundtable.lsst.codes/clientSecretVersion':
-    #         client_secret_version,
-    # }
+    secret.metadata = k8s_client.V1ObjectMeta(name=jks_secret_name)
+    secret.metadata.annotations = {
+        ca_version_key: cluster_secret_version,
+        user_version_key: client_secret_version,
+    }
     secret.type = "Opaque"
     secret.data = {
         "truststore.jks": base64.b64encode(truststore).decode('utf-8'),
