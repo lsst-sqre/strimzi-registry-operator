@@ -84,6 +84,14 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
         # Either the secret doesn't exist yet or it is outdated
         pass
 
+    # Try to delete the old secret (if it exists)
+    try:
+        delete_secret(
+            namespace=namespace,
+            name=jks_secret_name)
+    except Exception:
+        pass
+
     truststore, truststore_password = create_truststore(cluster_ca_cert)
     keystore, keystore_password = create_keystore(client_ca_cert, client_cert,
                                                   client_key)
@@ -139,6 +147,17 @@ def get_secret(*, namespace, name, k8s_client):
 
 def decode_secret_field(value):
     return base64.b64decode(value).decode('utf-8')
+
+
+def delete_secret(*, namespace, name, k8s_client):
+    v1_api = k8s_client.CoreV1Api()
+    secret = v1_api.read_namespaced_secret(
+        name=name,
+        namespace=namespace)
+    v1_api.delete_namespaced_secret(
+        name=name,
+        namespace=namespace,
+        body=secret)
 
 
 @lru_cache(maxsize=128)
