@@ -231,6 +231,8 @@ def create_truststore(cert, password=None):
             str(cert_path),
             '-storepass',
             password,
+            '-storetype',
+            'jks',
             '-trustcacerts',
             '-noprompt'
         ]
@@ -338,6 +340,8 @@ def create_keystore(user_ca_cert, user_cert, user_key, password=None):
             password,
             '-destkeystore',
             str(keystore_path),
+            '-deststoretype',
+            'jks',
             '-srckeystore',
             str(p12_path),
             '-srcstoretype',
