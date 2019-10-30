@@ -51,6 +51,7 @@ def create_registry(spec, meta, namespace, name, uid, logger, **kwargs):
         logger=logger
     )
     secret_name = secret['metadata']['name']
+    secret_version = secret['metadata']['resourceVersion']
 
     deployment_exists = False
     service_exists = False
@@ -69,7 +70,8 @@ def create_registry(spec, meta, namespace, name, uid, logger, **kwargs):
         dep_body = create_deployment(
             name=name,
             bootstrap_server=bootstrap_server,
-            secret_name=secret_name)
+            secret_name=secret_name,
+            secret_version=secret_version)
         dep_response = k8s_apps_v1_api.create_namespaced_deployment(
             body=dep_body,
             namespace=namespace

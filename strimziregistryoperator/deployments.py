@@ -27,7 +27,7 @@ def get_cluster_tls_listener(kafka):
         'Could not find a TLS listener from the Kafka resource.')
 
 
-def create_deployment(*, name, bootstrap_server, secret_name):
+def create_deployment(*, name, bootstrap_server, secret_name, secret_version):
     """Create the JSON resource for a Deployment of the Confluence Schema
     Registry.
 
@@ -42,19 +42,29 @@ def create_deployment(*, name, bootstrap_server, secret_name):
     secret_name : `str`
         Name of the Secret resource containing the JKS-formatted keystore
         and truststore.
+    secret_version : `str`
+        The ``resourceVersion`` of the Secret containing the JKS-formatted
+        keystore and truststore.
 
     Returns
     -------
     deployment : `dict`
         The Deployment resource.
     """
+    key_prefix = 'strimziregistryoperator.roundtable.lsst.codes'
+
     registry_container = create_container_spec(
         secret_name=secret_name,
         bootstrap_server=bootstrap_server)
 
     # The pod template
     template = {
-        'metadata': {'labels': {'app': name}},
+        'metadata': {
+            'labels': {'app': name},
+            'annotations': {
+                f'{key_prefix}/jksVersion': secret_version
+            }
+        },
         'spec': {
             'containers': [registry_container],
             'volumes': [
