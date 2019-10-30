@@ -220,3 +220,19 @@ def create_service(*, name):
     }
 
     return s
+
+
+def update_deployment(*, deployment, secret_version, k8s_client,
+                      name, namespace):
+    """Update the schema registry deploymeent with a new Secret version
+    to trigger a refresh of all its pods.
+    """
+    key_prefix = 'strimziregistryoperator.roundtable.lsst.codes'
+    secret_version_key = f'{key_prefix}/jksVersion'
+    deployment.metadata.annotations[secret_version_key] = secret_version
+
+    apps_api = k8s_client.AppsV1Api()
+    apps_api.patch_namespaced_deployment(
+        name=name,
+        namespace=namespace,
+        body=deployment)

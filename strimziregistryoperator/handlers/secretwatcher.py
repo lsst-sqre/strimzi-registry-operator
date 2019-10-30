@@ -7,7 +7,8 @@ __all__ = ('handle_secret_change', 'refresh_with_new_cluster_ca',
 
 import kopf
 
-from ..k8stools import create_k8sclient
+from ..k8stools import create_k8sclient, get_deployment
+from ..deployments import update_deployment
 from ..certprocessor import create_secret
 from .. import state
 
@@ -53,7 +54,7 @@ def refresh_with_new_cluster_ca(*, cluster_ca_secret, namespace, logger):
     for registry_name in state.registry_names:
         cluster = cluster_ca_secret['metadata']['labels']['strimzi.io/cluster']
 
-        create_secret(
+        secret = create_secret(
             kafka_username=registry_name,
             namespace=namespace,
             cluster=cluster,
@@ -61,8 +62,20 @@ def refresh_with_new_cluster_ca(*, cluster_ca_secret, namespace, logger):
             cluster_ca_secret=cluster_ca_secret,
             logger=logger
         )
+        secret_version = secret['metadata']['resourceVersion']
 
-        # TODO now restart the schema registry pods
+        deployment = get_deployment(
+            name=registry_name,
+            namespace=namespace,
+            k8s_client=k8s_client,
+            raw=False)
+
+        update_deployment(
+            deployment=deployment,
+            secret_version=secret_version,
+            name=registry_name,
+            namespace=namespace,
+            k8s_client=k8s_client)
 
 
 def refresh_with_new_client_secret(*, kafkauser_secret, namespace, logger):
@@ -71,7 +84,7 @@ def refresh_with_new_client_secret(*, kafkauser_secret, namespace, logger):
     kafka_username = kafkauser_secret['metadata']['name']
     cluster = kafkauser_secret['metadata']['labels']['strimzi.io/cluster']
 
-    create_secret(
+    secret = create_secret(
         kafka_username=kafka_username,
         namespace=namespace,
         cluster=cluster,
@@ -79,5 +92,17 @@ def refresh_with_new_client_secret(*, kafkauser_secret, namespace, logger):
         client_secret=kafkauser_secret,
         logger=logger
     )
+    secret_version = secret['metadata']['resourceVersion']
 
-    # TODO now restart the schema registry pods
+    deployment = get_deployment(
+        name=kafka_username,
+        namespace=namespace,
+        k8s_client=k8s_client,
+        raw=False)
+
+    update_deployment(
+        deployment=deployment,
+        secret_version=secret_version,
+        name=kafka_username,
+        namespace=namespace,
+        k8s_client=k8s_client)
