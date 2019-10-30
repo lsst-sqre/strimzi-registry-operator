@@ -18,12 +18,8 @@ def handle_secret_change(spec, meta, namespace, name, uid, event, body, logger,
     """Handle changes in secrets managed by Strimzi for the
     KafkaUser corresponding to a StrimziSchemaRegistry deployment.
     """
-    logger.info(f'Detected secret change: "{name}" ({event["type"]})')
-    logger.info(f'Type\'s type {type(event["type"])}')
-
     # Act only on Secrets that have been created or updated
-    # FIXME check these event names
-    if event['type'] not in ('create', 'update'):
+    if event['type'] not in ('ADDED', 'MODIFIED'):
         return
 
     # Act only on Secrets with the matching strimzi.io/cluster configuration.
