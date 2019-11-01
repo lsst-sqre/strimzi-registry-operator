@@ -3,7 +3,7 @@
 
 import kopf
 
-from ..k8stools import create_k8sclient, get_deployment, get_service
+from ..k8s import create_k8sclient, get_deployment, get_service
 from ..certprocessor import create_secret
 from ..deployments import (get_cluster_tls_listener, create_deployment,
                            create_service)

@@ -6,7 +6,7 @@ __all__ = ('start_operator',)
 from kubernetes.client.rest import ApiException
 
 from . import state
-from .k8stools import create_k8sclient
+from .k8s import create_k8sclient
 
 
 def start_operator():

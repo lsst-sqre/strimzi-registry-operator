@@ -12,7 +12,7 @@ import string
 import secrets
 import tempfile
 
-from .k8stools import get_secret
+from .k8s import get_secret
 
 
 def create_secret(*, kafka_username, namespace, cluster, k8s_client,
@@ -31,7 +31,7 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
         The name of the Strimzi Kafka cluster.
     k8s_client
         A Kubernetes client (see
-        `strimziregistryoperator.k8stools.create_k8sclient`).
+        `strimziregistryoperator.k8s.create_k8sclient`).
     cluster_ca_secret : `dict`, optional
         The Kubernetes Secret resource body for the cluster CA secret,
         named ``<cluster>-cluster-ca-cert``. If not set, the resource will be

@@ -7,7 +7,7 @@ __all__ = ('handle_secret_change', 'refresh_with_new_cluster_ca',
 
 import kopf
 
-from ..k8stools import create_k8sclient, get_deployment
+from ..k8s import create_k8sclient, get_deployment
 from ..deployments import update_deployment
 from ..certprocessor import create_secret
 from .. import state
