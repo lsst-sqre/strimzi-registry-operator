@@ -127,3 +127,43 @@ def get_secret(*, namespace, name, k8s_client, raw=True):
         return json.loads(result.data)
     else:
         return result
+
+
+def get_ssr(*, namespace, name, k8s_client, raw=True):
+    """Get a StrimziSchemaRegistry resource.
+
+    Parameters
+    ----------
+    namespace : `str`
+        The Kubernetes namespace where the Strimzi Kafka cluster operates.
+    name : `str`
+        The name of the StrimziSchemaRegistry.
+    k8s_client
+        A Kubernetes client (see `create_k8sclient`).
+    raw : `bool`
+        If `True`, the raw Kubernetes manifest is returned as a `dict`.
+        Otherwise the Python object representation of the resource is returned.
+
+    Returns
+    -------
+    ssr
+        The Kubernetes StrimziSchemaRegistry resource either as a `dict` or an
+        object.
+    """
+    if raw:
+        preload_content = False
+    else:
+        preload_content = True
+
+    api = k8s_client.CustomObjectsApi()
+    result = api.get_namespaced_custom_object(
+        group='roundtable.lsst.codes',
+        version='v1beta1',
+        namespace=namespace,
+        plural='ssrs',
+        name=name,
+        _preload_content=preload_content)
+    if raw:
+        return json.loads(result.data)
+    else:
+        return result

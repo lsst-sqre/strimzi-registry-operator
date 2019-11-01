@@ -12,10 +12,12 @@ import string
 import secrets
 import tempfile
 
+import kopf
+
 from .k8s import get_secret
 
 
-def create_secret(*, kafka_username, namespace, cluster, k8s_client,
+def create_secret(*, kafka_username, namespace, cluster, owner, k8s_client,
                   cluster_ca_secret=None, client_secret=None, logger=None):
     """Create and deploy a new Secret for the StrimziSchemaRegistry with
     JKS-formatted key and truststores.
@@ -29,6 +31,8 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
         operates.
     cluster : `str`
         The name of the Strimzi Kafka cluster.
+    owner : `dict`
+        The object that owns the Secret; usually the StrimziSchemaRegistry.
     k8s_client
         A Kubernetes client (see
         `strimziregistryoperator.k8s.create_k8sclient`).
@@ -129,9 +133,13 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
             keystore_password.encode('utf-8')).decode('utf-8'),
     }
 
+    # Set the owner on the secret. kopf.adopt only works on dicts
+    secret_body = api_instance.api_client.sanitize_for_serialization(secret)
+    kopf.adopt(secret_body, owner=owner)
+
     api_instance.create_namespaced_secret(
         namespace=namespace,
-        body=secret)
+        body=secret_body)
 
     logger.info('Created new JKS secret')
 

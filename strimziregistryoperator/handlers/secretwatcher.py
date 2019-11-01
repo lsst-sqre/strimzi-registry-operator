@@ -7,7 +7,7 @@ __all__ = ('handle_secret_change', 'refresh_with_new_cluster_ca',
 
 import kopf
 
-from ..k8s import create_k8sclient, get_deployment
+from ..k8s import create_k8sclient, get_deployment, get_ssr
 from ..deployments import update_deployment
 from ..certprocessor import create_secret
 from .. import state
@@ -54,10 +54,16 @@ def refresh_with_new_cluster_ca(*, cluster_ca_secret, namespace, logger):
     for registry_name in state.registry_names:
         cluster = cluster_ca_secret['metadata']['labels']['strimzi.io/cluster']
 
+        ssr_body = get_ssr(
+            name=registry_name,
+            namespace=namespace,
+            k8s_client=k8s_client)
+
         secret = create_secret(
             kafka_username=registry_name,
             namespace=namespace,
             cluster=cluster,
+            owner=ssr_body,
             k8s_client=k8s_client,
             cluster_ca_secret=cluster_ca_secret,
             logger=logger
@@ -84,10 +90,16 @@ def refresh_with_new_client_secret(*, kafkauser_secret, namespace, logger):
     kafka_username = kafkauser_secret['metadata']['name']
     cluster = kafkauser_secret['metadata']['labels']['strimzi.io/cluster']
 
+    ssr_body = get_ssr(
+        name=kafka_username,
+        namespace=namespace,
+        k8s_client=k8s_client)
+
     secret = create_secret(
         kafka_username=kafka_username,
         namespace=namespace,
         cluster=cluster,
+        owner=ssr_body,
         k8s_client=k8s_client,
         client_secret=kafkauser_secret,
         logger=logger

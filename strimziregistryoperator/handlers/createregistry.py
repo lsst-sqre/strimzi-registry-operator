@@ -3,7 +3,7 @@
 
 import kopf
 
-from ..k8s import create_k8sclient, get_deployment, get_service
+from ..k8s import create_k8sclient, get_deployment, get_service, get_secret
 from ..certprocessor import create_secret
 from ..deployments import (get_cluster_tls_listener, create_deployment,
                            create_service)
@@ -11,7 +11,7 @@ from .. import state
 
 
 @kopf.on.create('roundtable.lsst.codes', 'v1beta1', 'strimzischemaregistries')
-def create_registry(spec, meta, namespace, name, uid, logger, **kwargs):
+def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
     """Handle creation of a StrimziSchemaRegistry resource by deploying a
     new Schema Registry.
     """
@@ -47,11 +47,18 @@ def create_registry(spec, meta, namespace, name, uid, logger, **kwargs):
         kafka_username=name,  # assume the StrimziSchemaRegistry name matches
         namespace=namespace,
         cluster=cluster_name,
+        owner=body,
         k8s_client=k8s_client,
         logger=logger
     )
     secret_name = secret['metadata']['name']
-    secret_version = secret['metadata']['resourceVersion']
+
+    # Get the secret so now it has the resourceVersion metadata
+    secret_body = get_secret(
+        name=secret_name,
+        namespace=namespace,
+        k8s_client=k8s_client)
+    secret_version = secret_body['metadata']['resourceVersion']
 
     deployment_exists = False
     service_exists = False
@@ -72,6 +79,8 @@ def create_registry(spec, meta, namespace, name, uid, logger, **kwargs):
             bootstrap_server=bootstrap_server,
             secret_name=secret_name,
             secret_version=secret_version)
+        # Set the StrimziSchemaRegistry as the owner
+        kopf.adopt(dep_body, owner=body)
         dep_response = k8s_apps_v1_api.create_namespaced_deployment(
             body=dep_body,
             namespace=namespace
@@ -93,6 +102,8 @@ def create_registry(spec, meta, namespace, name, uid, logger, **kwargs):
     if not service_exists:
         svc_body = create_service(
             name=name)
+        # Set the StrimziSchemaRegistry as the owner
+        kopf.adopt(svc_body, owner=body)
         svc_response = k8s_core_v1_api.create_namespaced_service(
             body=svc_body,
             namespace=namespace
