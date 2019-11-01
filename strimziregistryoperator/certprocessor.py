@@ -2,18 +2,17 @@
 based on the cluster's CA cert and the KafkaUser's key.
 """
 
-__all__ = ('create_secret', 'get_secret', 'create_truststore',
-           'create_keystore')
+__all__ = ('create_secret', 'create_truststore', 'create_keystore')
 
 import base64
 from functools import lru_cache
-import json
-import logging
 from pathlib import Path
 import subprocess
 import string
 import secrets
 import tempfile
+
+from .k8stools import get_secret
 
 
 def create_secret(*, kafka_username, namespace, cluster, k8s_client,
@@ -137,30 +136,6 @@ def create_secret(*, kafka_username, namespace, cluster, k8s_client,
     logger.info('Created new JKS secret')
 
     return api_instance.api_client.sanitize_for_serialization(secret)
-
-
-def get_secret(*, namespace, name, k8s_client):
-    """Get a Secret resource.
-
-    Parameters
-    ----------
-    namespace : `str`
-        The Kubernetes namespace where the Strimzi Kafka cluster operates.
-    username : `str`
-        The name of the KafkaUser, which is also the name of its corresponding
-        Secret resource created by the Strimzi user operator.
-    k8s_client
-        A Kubernetes client (see
-        `strimziregistryoperator.k8stools.create_k8sclient`).
-
-    Returns
-    -------
-    secret : `dict`
-        The Kubernetes Secret resource.
-    """
-    v1_api = k8s_client.CoreV1Api()
-    return json.loads(v1_api.read_namespaced_secret(
-        name, namespace, _preload_content=False).data)
 
 
 def decode_secret_field(value):
