@@ -22,10 +22,11 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
     k8s_cr_api = k8s_client.CustomObjectsApi()
     k8s_core_v1_api = k8s_client.CoreV1Api()
 
+    strimzi_version = spec.get("strimzi-version", "v1beta1")
     # Pull the KafkaUser resource so we can get the cluster name
     kafkauser = k8s_cr_api.get_namespaced_custom_object(
         group='kafka.strimzi.io',
-        version='v1beta1',
+        version=strimzi_version,
         namespace=namespace,
         plural='kafkausers',
         name=name  # assume StrimziSchemaRegistry name matches
@@ -35,11 +36,12 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
     # Pull the Kafka resource so we can get the listener
     kafka = k8s_cr_api.get_namespaced_custom_object(
         group='kafka.strimzi.io',
-        version='v1beta1',
+        version=strimzi_version,
         namespace=namespace,
         plural='kafkas',
         name=cluster_name
     )
+
     bootstrap_server = get_cluster_tls_listener(kafka)
 
     # Create the JKS-formatted truststore/keystore secrets
