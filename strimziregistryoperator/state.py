@@ -1,17 +1,13 @@
 """Constructed (cached) state as module-level attributes.
 """
 
-cluster_name = 'events'
-"""The name of the Kafka cluster serviced by the operator.
+import os
 
-TODO: make this configurable.
-"""
+cluster_name = os.environ.get('SSR_CLUSTER_NAME', 'events')
+"""The name of the Kafka cluster serviced by the operator. """
 
-namespace = 'events'
-"""The name of the Kubernetes namespace monitored by this operator.
-
-TODO: make this configurable.
-"""
+namespace = os.environ.get('SSR_NAMESPACE', 'events')
+"""The name of the Kubernetes namespace monitored by this operator. """
 
 
 registry_names = set()
