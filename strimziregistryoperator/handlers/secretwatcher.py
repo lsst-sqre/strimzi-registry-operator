@@ -34,7 +34,7 @@ def handle_secret_change(spec, meta, namespace, name, uid, event, body, logger,
     if name == f'{state.cluster_name}-cluster-ca-cert':
         # Handle a change in the cluster CA certificate
         refresh_with_new_cluster_ca(
-            cluster_ca_body=body,
+            cluster_ca_secret=body,
             namespace=namespace,
             logger=logger)
     elif name in state.registry_names:
