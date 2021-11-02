@@ -74,7 +74,12 @@ def get_service_ports(*, name, namespace, k8s_client):
     ports
         A dict of port names to their specs.
     """
-    service = get_service(name, namespace, k8s_client)
+    service = get_service(
+        name=name,
+        namespace=namespace,
+        k8s_client=k8s_client,
+        raw=True,
+    )
     ports = {}
     for p in service["spec"]["ports"]:
         ports[p["name"]] = p

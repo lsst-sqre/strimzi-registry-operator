@@ -76,11 +76,11 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
         # Pull the bootstrap service so we can get its address
         bootstrap_service_name = f"{cluster_name}-kafka-bootstrap"
         bootstrap_ports = get_service_ports(
-            name=cluster_name,
+            name=bootstrap_service_name,
             namespace=namespace,
             k8s_client=k8s_client,
         )
-        bootstrap_internal_port = bootstrap_ports["tcp-internal"]
+        bootstrap_internal_port = bootstrap_ports["tcp-internal"]["port"]
 
         bootstrap_server = f"{bootstrap_service_name}.{namespace}.svc:{bootstrap_internal_port}"
 
