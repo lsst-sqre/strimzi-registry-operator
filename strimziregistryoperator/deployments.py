@@ -1,13 +1,13 @@
 """Utilities for creating deployments and related resources.
 """
 
-__all__ = ('get_cluster_tls_listener', 'create_deployment', 'create_service')
+__all__ = ('get_cluster_internal_listener', 'create_deployment', 'create_service')
 
 import kopf
 
 
-def get_cluster_tls_listener(kafka):
-    """Get the TLS listener for the Kafka cluster deployment.
+def get_cluster_internal_listener(kafka):
+    """Get the internal listener for the Kafka cluster deployment.
     """
     try:
         listeners = kafka['status']['listeners']
@@ -17,14 +17,14 @@ def get_cluster_tls_listener(kafka):
 
     for listener in listeners:
         try:
-            if listener['type'] == 'tls':
+            if listener['type'] == 'internal':
                 address = listener['addresses'][0]
                 return f'{address["host"]}:{address["port"]}'
         except (KeyError, IndexError):
             continue
 
     raise kopf.PermanentError(
-        'Could not find a TLS listener from the Kafka resource.')
+        'Could not find an internal listener from the Kafka resource.')
 
 
 def create_deployment(*, name, bootstrap_server, secret_name, secret_version):
@@ -38,7 +38,7 @@ def create_deployment(*, name, bootstrap_server, secret_name, secret_version):
         deployment.
     bootstrap_server : `str`
         The ``host:port`` of the Kafka bootstrap service. See
-        `get_cluster_tls_listener`.
+        `get_cluster_internal_listener`.
     secret_name : `str`
         Name of the Secret resource containing the JKS-formatted keystore
         and truststore.
