@@ -6,27 +6,6 @@ __all__ = ('get_cluster_internal_listener', 'create_deployment', 'create_service
 import kopf
 
 
-def get_cluster_internal_listener(kafka):
-    """Get the internal listener for the Kafka cluster deployment.
-    """
-    try:
-        listeners = kafka['status']['listeners']
-    except KeyError:
-        raise kopf.PermanentError(
-            'Could not get status.listeners from Kafka resource.')
-
-    for listener in listeners:
-        try:
-            if listener['type'] == 'internal':
-                address = listener['addresses'][0]
-                return f'{address["host"]}:{address["port"]}'
-        except (KeyError, IndexError):
-            continue
-
-    raise kopf.PermanentError(
-        'Could not find an internal listener from the Kafka resource.')
-
-
 def create_deployment(*, name, bootstrap_server, secret_name, secret_version):
     """Create the JSON resource for a Deployment of the Confluence Schema
     Registry.

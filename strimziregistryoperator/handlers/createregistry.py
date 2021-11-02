@@ -3,10 +3,18 @@
 
 import kopf
 
-from ..k8s import create_k8sclient, get_deployment, get_service, get_secret
+from ..k8s import (
+    create_k8sclient,
+    get_deployment,
+    get_service,
+    get_secret,
+    get_service_ports,
+)
 from ..certprocessor import create_secret
-from ..deployments import (get_cluster_internal_listener, create_deployment,
-                           create_service)
+from ..deployments import (
+    create_deployment,
+    create_service,
+)
 from .. import state
 
 
@@ -32,17 +40,6 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
         name=name  # assume StrimziSchemaRegistry name matches
     )
     cluster_name = kafkauser['metadata']['labels']['strimzi.io/cluster']
-
-    # Pull the Kafka resource so we can get the listener
-    kafka = k8s_cr_api.get_namespaced_custom_object(
-        group='kafka.strimzi.io',
-        version=strimzi_version,
-        namespace=namespace,
-        plural='kafkas',
-        name=cluster_name
-    )
-
-    bootstrap_server = get_cluster_internal_listener(kafka)
 
     # Create the JKS-formatted truststore/keystore secrets
     secret = create_secret(
@@ -76,6 +73,17 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
 
     # Create the Schema Registry deployment
     if not deployment_exists:
+        # Pull the bootstrap service so we can get its address
+        bootstrap_service_name = f"{cluster_name}-kafka-bootstrap"
+        bootstrap_ports = get_service_ports(
+            name=cluster_name,
+            namespace=namespace,
+            k8s_client=k8s_client,
+        )
+        bootstrap_internal_port = bootstrap_ports["tcp-internal"]
+
+        bootstrap_server = f"{bootstrap_service_name}.{namespace}.svc:{bootstrap_internal_port}"
+
         dep_body = create_deployment(
             name=name,
             bootstrap_server=bootstrap_server,

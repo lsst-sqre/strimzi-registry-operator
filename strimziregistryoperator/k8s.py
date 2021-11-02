@@ -1,4 +1,4 @@
-__all__ = ('create_k8sclient', 'get_deployment', 'get_service', 'get_secret')
+__all__ = ('create_k8sclient', 'get_deployment', 'get_service', 'get_service_ports', 'get_secret')
 
 import json
 
@@ -55,6 +55,30 @@ def get_deployment(*, name, namespace, k8s_client, raw=True):
         return json.loads(result.data)
     else:
         return result
+
+
+def get_service_ports(*, name, namespace, k8s_client):
+    """Get the ports associated with a Service resource.
+
+    Parameters
+    ----------
+    namespace : `str`
+        The Kubernetes namespace where the Strimzi Kafka cluster operates.
+    name : `str`
+        The name of the Service.
+    k8s_client
+        A Kubernetes client (see `create_k8sclient`).
+
+    Returns
+    -------
+    ports
+        A dict of port names to their specs.
+    """
+    service = get_service(name, namespace, k8s_client)
+    ports = {}
+    for p in service["spec"]["ports"]:
+        ports[p["name"]] = p
+    return ports
 
 
 def get_service(*, name, namespace, k8s_client, raw=True):
