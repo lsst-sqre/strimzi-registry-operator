@@ -3,19 +3,41 @@ kind: CustomResourceDefinition
 metadata:
   name: strimzischemaregistries.roundtable.lsst.codes
 spec:
+  scope: Namespaced
   group: roundtable.lsst.codes
+  versions:
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          description: >-
+            StrimziSchemaRegistry represents a desired Schema Registry instance
+          type: object
+          properties:
+            spec:
+              type: object
+              description: >-
+                The specification of the Schema Registry instance.
+              properties:
+                strimzi-version:
+                  type: string
+                  default: "v1beta2"
+                  description: >-
+                    The version of the Strimzi Custom Resource API to use. The
+                    correct value depends on the deployed version of Strimzi.
+                listener:
+                  type: string
+                  default: "internal"
+                  description: >-
+                    The name of the Kafka listener to use to connect.
   names:
     kind: StrimziSchemaRegistry
     plural: strimzischemaregistries
-    shortNames:
-    - ssrs
-    - ssr
     singular: strimzischemaregistry
-  scope: Namespaced
-  versions:
-  - name: v1beta1
-    served: true
-    storage: true
+    shortNames:
+      - ssrs
+      - ssr
 ---
 apiVersion: v1
 kind: ServiceAccount
