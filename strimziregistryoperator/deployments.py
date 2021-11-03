@@ -36,8 +36,10 @@ def get_cluster_listener(kafka, listener_name="tls"):
             continue
 
     all_names = [listener.get('type') for listener in listeners]
-    msg = f'Could not find address of a listener named {listener_name} from the Kafka resource.'
-    msg += f'Available names: {all_names}'
+    msg = (
+        f'Could not find address of a listener named {listener_name} '
+        f'from the Kafka resource. Available names: {all_names}'
+    )
     raise kopf.TemporaryError(msg, delay=10)
 
 
