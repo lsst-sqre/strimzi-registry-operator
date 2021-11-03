@@ -29,6 +29,7 @@ install_requires = [
 # Test dependencies
 tests_require = [
     'pytest==5.2.1',
+    'flake8<4',
     'pytest-flake8>=1.0.6',
 ]
 tests_require += install_requires
