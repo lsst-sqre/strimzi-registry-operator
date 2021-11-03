@@ -1,30 +1,44 @@
 """Utilities for creating deployments and related resources.
 """
 
-__all__ = ('get_cluster_tls_listener', 'create_deployment', 'create_service')
+__all__ = ('get_cluster_listener', 'create_deployment', 'create_service')
 
 import kopf
 
 
-def get_cluster_tls_listener(kafka):
-    """Get the TLS listener for the Kafka cluster deployment.
+def get_cluster_listener(kafka, listener_name="tls"):
+    """Get a listener by name from a Kafka cluster deployment.
     """
     try:
         listeners = kafka['status']['listeners']
     except KeyError:
-        raise kopf.PermanentError(
-            'Could not get status.listeners from Kafka resource.')
+        raise kopf.TemporaryError(
+            'Could not get status.listeners from Kafka resource.',
+            delay=10,
+        )
 
     for listener in listeners:
         try:
-            if listener['type'] == 'tls':
-                address = listener['addresses'][0]
-                return f'{address["host"]}:{address["port"]}'
+            # For various historical reasons, the 'name' of the listener is
+            # called 'type' in the status field of a Kafka resource from
+            # Strimzi.
+            if listener['type'] == listener_name:
+                # Convenience field available in some versions of Strimzi.
+                if "bootstrapServers" in listener:
+                    return listener["bootstrapServers"]
+
+                # fall back to constructing it ourselves from the first address
+                # on the listener, which should usually work.
+                else:
+                    address = listener['addresses'][0]
+                    return f'{address["host"]}:{address["port"]}'
         except (KeyError, IndexError):
             continue
 
-    raise kopf.PermanentError(
-        'Could not find a TLS listener from the Kafka resource.')
+    all_names = [listener.get('type') for listener in listeners]
+    msg = f'Could not find address of a listener named {listener_name} from the Kafka resource.'
+    msg += f'Available names: {all_names}'
+    raise kopf.TemporaryError(msg, delay=10)
 
 
 def create_deployment(*, name, bootstrap_server, secret_name, secret_version):
