@@ -27,6 +27,5 @@ RUN pip install strimzi-registry-operator-$VERSION.tar.gz && \
 
 USER app
 
-# TODO: refactor "namespace" argument into an environment variable for
-# configurability.
-CMD ["kopf", "run", "--standalone", "-m", "strimziregistryoperator.handlers", "--namespace", "events", "--verbose"]
+# Accept the SSR_NAMESPACE env var for a namespace to watch, defaulting to 'events'.
+CMD ["sh", "-c", "kopf run --standalone -m strimziregistryoperator.handlers --namespace ${SSR_NAMESPACE:-events} --verbose"]
