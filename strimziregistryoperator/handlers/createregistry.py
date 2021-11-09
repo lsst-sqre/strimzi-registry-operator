@@ -5,7 +5,7 @@ import kopf
 
 from ..k8s import create_k8sclient, get_deployment, get_service, get_secret
 from ..certprocessor import create_secret
-from ..deployments import (get_cluster_tls_listener, create_deployment,
+from ..deployments import (get_cluster_listener, create_deployment,
                            create_service)
 from .. import state
 
@@ -34,6 +34,7 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
     cluster_name = kafkauser['metadata']['labels']['strimzi.io/cluster']
 
     # Pull the Kafka resource so we can get the listener
+    listener_name = spec.get("listener", "internal")
     kafka = k8s_cr_api.get_namespaced_custom_object(
         group='kafka.strimzi.io',
         version=strimzi_version,
@@ -42,7 +43,7 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
         name=cluster_name
     )
 
-    bootstrap_server = get_cluster_tls_listener(kafka)
+    bootstrap_server = get_cluster_listener(kafka, listener_name)
 
     # Create the JKS-formatted truststore/keystore secrets
     secret = create_secret(
