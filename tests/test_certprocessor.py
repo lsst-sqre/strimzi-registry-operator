@@ -4,7 +4,9 @@
 import pytest
 
 from strimziregistryoperator.certprocessor import (
-    create_truststore, create_keystore)
+    create_keystore,
+    create_truststore,
+)
 
 
 @pytest.fixture
@@ -147,18 +149,20 @@ AvMffvxA2Qccn47mmbmpqe4=
 def test_create_truststore(cluster_ca_cert):
     # NB: This test depends upon the cert fixtures, which expire in 1 year
     # (2022-10-22).
-    truststore, password = create_truststore(cluster_ca_cert,
-                                             password='test1234')
+    truststore, password = create_truststore(
+        cluster_ca_cert, password="test1234"
+    )
     assert isinstance(truststore, bytes)
     assert len(truststore) > 0
-    assert password == 'test1234'
+    assert password == "test1234"
 
 
 def test_create_keystore(user_ca_cert, user_cert, user_key):
     # NB: This test depends upon the cert fixtures, which expire in 1 year
     # (2022-10-22).
-    keystore, password = create_keystore(user_ca_cert, user_cert, user_key,
-                                         password='test1234')
+    keystore, password = create_keystore(
+        user_ca_cert, user_cert, user_key, password="test1234"
+    )
     assert isinstance(keystore, bytes)
     assert len(keystore) > 0
-    assert password == 'test1234'
+    assert password == "test1234"
