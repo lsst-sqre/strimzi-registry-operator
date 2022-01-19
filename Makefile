@@ -1,20 +1,20 @@
-.PHONY: install
-install:
-	pip install -e ".[dev]"
+.PHONY: update-deps
+update-deps:
+	pip install --upgrade pip-tools pip setuptools
+	pip-compile --upgrade --build-isolation --generate-hashes --output-file requirements/main.txt requirements/main.in
+	pip-compile --upgrade --build-isolation --generate-hashes --output-file requirements/dev.txt requirements/dev.in
 
-.PHONY: test
-test:
-	pytest
+.PHONY: init
+init:
+	pip install --editable .
+	pip install --upgrade -r requirements/main.txt -r requirements/dev.txt
+	rm -rf .tox
+	pip install --upgrade tox pre-commit
+	pre-commit install
 
-.PHONY: image
-image:
-	python setup.py sdist
-	docker build --build-arg VERSION=`python -m strimziregistryoperator.version` -t lsstsqre/strimzi-registry-operator:build .
+.PHONY: update
+update: update-deps init
 
-.PHONY: travis-docker-deploy
-travis-docker-deploy:
-	./bin/travis-docker-deploy.sh lsstsqre/strimzi-registry-operator build
-
-.PHONY: version
-version:
-	python -m strimziregistryoperator.version
+.PHONY: run
+run:
+	tox -e run
