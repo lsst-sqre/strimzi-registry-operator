@@ -1,4 +1,4 @@
-__all__ = ('create_k8sclient', 'get_deployment', 'get_service', 'get_secret')
+__all__ = ("create_k8sclient", "get_deployment", "get_service", "get_secret")
 
 import json
 
@@ -48,9 +48,8 @@ def get_deployment(*, name, namespace, k8s_client, raw=True):
 
     api = k8s_client.AppsV1Api()
     result = api.read_namespaced_deployment(
-        name=name,
-        namespace=namespace,
-        _preload_content=preload_content)
+        name=name, namespace=namespace, _preload_content=preload_content
+    )
     if raw:
         return json.loads(result.data)
     else:
@@ -84,9 +83,8 @@ def get_service(*, name, namespace, k8s_client, raw=True):
 
     api = k8s_client.CoreV1Api()
     result = api.read_namespaced_service(
-        name=name,
-        namespace=namespace,
-        _preload_content=preload_content)
+        name=name, namespace=namespace, _preload_content=preload_content
+    )
     if raw:
         return json.loads(result.data)
     else:
@@ -120,9 +118,8 @@ def get_secret(*, namespace, name, k8s_client, raw=True):
 
     api = k8s_client.CoreV1Api()
     result = api.read_namespaced_secret(
-        name=name,
-        namespace=namespace,
-        _preload_content=preload_content)
+        name=name, namespace=namespace, _preload_content=preload_content
+    )
     if raw:
         return json.loads(result.data)
     else:
@@ -157,12 +154,13 @@ def get_ssr(*, namespace, name, k8s_client, raw=True):
 
     api = k8s_client.CustomObjectsApi()
     result = api.get_namespaced_custom_object(
-        group='roundtable.lsst.codes',
-        version='v1beta1',
+        group="roundtable.lsst.codes",
+        version="v1beta1",
         namespace=namespace,
-        plural='ssrs',
+        plural="ssrs",
         name=name,
-        _preload_content=preload_content)
+        _preload_content=preload_content,
+    )
     if raw:
         return json.loads(result.data)
     else:

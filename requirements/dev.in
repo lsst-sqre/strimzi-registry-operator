@@ -1,0 +1,13 @@
+# Editable development dependencies
+# Add direct development, test, and documentation dependencies here, as well
+# as implicit dev dependencies with constrained versions.
+#
+# After editing, update requirements/dev.txt by running:
+#     make update-deps
+
+-c main.txt
+
+coverage[toml]
+mypy
+pytest
+pytest-cov
