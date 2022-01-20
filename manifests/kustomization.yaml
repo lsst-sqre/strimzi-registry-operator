@@ -1,9 +1,9 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-image:
+images:
   - name: lsstsqre/strimzi-registry-operator
-    newTag: 0.4.0
+    newTag: 0.4.1
 
 resources:
   - registry-crd.yaml
