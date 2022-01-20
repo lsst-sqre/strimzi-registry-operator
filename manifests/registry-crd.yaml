@@ -5,6 +5,7 @@ metadata:
 spec:
   scope: Namespaced
   group: roundtable.lsst.codes
+  preserveUnknownFields: false
   versions:
     - name: v1beta1
       served: true
