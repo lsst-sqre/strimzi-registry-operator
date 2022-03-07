@@ -48,9 +48,9 @@ kopf==0.21 \
     --hash=sha256:6cda8efff50aec4d0761d22e8e1027b2485b6b054b5065f5a2aa911ddf0f2cb2 \
     --hash=sha256:b44d316bb30558a7dccedd60512a9d5a7228e0e08b443fbad050478551a0d09c
     # via -r requirements/main.in
-kubernetes==22.6.0 \
-    --hash=sha256:5d329ee9b40e333e32f7bb62339cdce3eac47ab7c50b305ec21c114c49447e20 \
-    --hash=sha256:8578afa0fd4e7e86cfa4eeec204e4bad8a2c109ce52f85f8f3c593e9b0d47960
+kubernetes==23.3.0 \
+    --hash=sha256:05c98e4bd92f7091fa0fa58f594490e712c9151144d5f458235663a8909e342a \
+    --hash=sha256:223ff8f0ece5bc20fb65545f09a2308c5e1e9c0be83ae68504c1b1c6baa38f5b
     # via -r requirements/main.in
 oauthlib==3.2.0 \
     --hash=sha256:23a8208d75b902797ea29fd31fa80a15ed9dc2c6c16fe73f5d346f83f6fa27a2 \
