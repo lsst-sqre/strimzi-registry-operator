@@ -32,9 +32,9 @@ click==8.1.2 \
     --hash=sha256:24e1a4a9ec5bf6299411369b208c1df2188d9eb8d916302fe6bf03faed227f1e \
     --hash=sha256:479707fe14d9ec9a0757618b7a100a0ae4c4e236fac5b7f80ca68028141a1a72
     # via kopf
-google-auth==2.6.2 \
-    --hash=sha256:3ba4d63cb29c1e6d5ffcc1c0623c03cf02ede6240a072f213084749574e691ab \
-    --hash=sha256:60d449f8142c742db760f4c0be39121bc8d9be855555d784c252deaca1ced3f5
+google-auth==2.6.3 \
+    --hash=sha256:5e079eb4d21df1853d55cf2b6766b77ef36f7f7bdaf7d4a70434aa97c7578d60 \
+    --hash=sha256:d65bb0e3701eaaa64fd2aa85e1325580524b0bddc6dc5db3ab89c481b6a20141
     # via kubernetes
 idna==3.3 \
     --hash=sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff \
