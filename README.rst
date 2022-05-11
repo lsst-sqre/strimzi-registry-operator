@@ -16,13 +16,69 @@ It probably isn't suitable for use outside LSST at the moment.**
 Deploy the operator
 ===================
 
+There are two steps for running strimzi-registry-operator. First, you'll need to deploy the operator itself --- this is described in this section.
+Once the operator is deployed, you can deploy ``StrimziSchemaRegistry`` resources that actually create and maintain a Confluent Schema Registry application (this is discussed in later sections).
+
+Two operator deployment options are available: `Helm <https://helm.sh>`__ and `Kustomize <https://kustomize.io>`__.
+
+With Helm
+---------
+
+A Helm chart is available for strimzi-registry-operator on GitHub at `lsst-sqre/charts <https://github.com/lsst-sqre/charts/tree/master/charts/strimzi-registry-operator>`__.
+
+.. code-block:: sh
+
+   helm repo add lsstsqre https://lsst-sqre.github.io/charts/
+   helm repo update
+   helm install lsstsqre/strimzi-registry-operator --name ssr --set watchNamespace="...",clusterName="..."
+
+`See the Helm chart's README <lsst-sqre/charts <https://github.com/lsst-sqre/charts/tree/master/charts/strimzi-registry-operator>`__ for important values to set, including the names of the Strimzi Kafka cluster and namespace for KafkaUser resources to watch.
+
+With Kustomize
+--------------
+
 The manifests for the operator itself are located in the `/manifests` directory of this repository.
 You can use Kustomize to build a single YAML file for deployment.::
 
     kustomize build manifests > manifest.yaml
     kubectl apply -f manifest.yaml
 
-You can also create your own overay to customize details such as namespace and the name of the Docker image.
+To configure the name of the Strimzi cluster and the namespace where KafkaUser resources are available, you'll need to create your own Kustomize overlay.
+
+A basic ``kustomization.yaml`` file is:
+
+.. code-block:: yaml
+
+   apiVersion: kustomize.config.k8s.io/v1beta1
+   kind: Kustomization
+
+   resources:
+     - github.com/lsst-sqre/strimzi-registry-operator.git//manifests?ref=0.4.1
+
+   patches:
+     - strimzi-registry-operator-deployment.yaml
+
+Use the ``strimzi-registry-operator-deployment.yaml`` patch to set environment variables:
+
+.. code-block:: yaml
+
+   apiVersion: apps/v1
+   kind: Deployment
+   metadata:
+     name: strimzi-registry-operator
+   spec:
+     template:
+       spec:
+         containers:
+           - name: operator
+             env:
+               - name: SSR_CLUSTER_NAME
+                 value: events
+               - name: SSR_NAMESPACE
+                 value: events
+
+- ``SSR_CLUSTER_NAME`` is the name of the Strimzi Kafka cluster.
+- ``SSR_NAMESPACE`` is the namespace where the Strimzi Kafka cluster is deployed and where KafkaUser resources are found.
 
 Deploy a Schema Registry
 ========================
@@ -34,7 +90,7 @@ Deploy a ``KafkaTopic`` that the Schema Registry will use as its primary storage
 
 .. code-block:: yaml
 
-   apiVersion: kafka.strimzi.io/v1beta1
+   apiVersion: kafka.strimzi.io/v1beta2
    kind: KafkaTopic
    metadata:
      name: "registry-schemas"
@@ -59,7 +115,7 @@ Deploy a KafkaUser for the Schema Registry that gives the Schema Registry suffic
 
 .. code-block:: yaml
 
-   apiVersion: kafka.strimzi.io/v1beta1
+   apiVersion: kafka.strimzi.io/v1beta2
    kind: KafkaUser
    metadata:
      name: confluent-schema-registry
@@ -109,4 +165,11 @@ The strimzi-schema-registry operator deploys the Schema Registry given a ``Strim
    kind: StrimziSchemaRegistry
    metadata:
      name: confluent-schema-registry
-   spec: {}
+   spec:
+     strimzi-version: v1beta2
+     listener: tls
+
+- ``strimzi-version`` is the version of the ``kafka.strimzi.io`` Custom Resource API to use.
+  The correct value depends on the deployed version of Strimzi.
+- ``listener`` is the Kafka listener that the Schema Registry should use.
+  For example, ``tls`` or ``internal``.
