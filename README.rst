@@ -10,9 +10,6 @@ Overview:
 - Works with Strimzi's TLS authentication and authorization by converting the TLS certificate associated with a KafkaUser into a JKS-formatted keystore and truststore that's used by Confluence Schema Registry.
 - When Strimzi updates either the Kafka cluster's CA certificate or the KafkaUser's client certificates, the operator automatically recreates the JKS truststore/keystore secrets and triggers a rolling restart of the Schema Registry pods.
 
-**This operator is still in early development and testing.
-It probably isn't suitable for use outside LSST at the moment.**
-
 Deploy the operator
 ===================
 
