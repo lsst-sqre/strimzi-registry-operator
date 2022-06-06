@@ -34,7 +34,7 @@ jobs:
           python-version: ${{ matrix.python }}
 
       - name: Run pre-commit
-        uses: pre-commit/action@v2.0.3
+        uses: pre-commit/action@v3.0.0
 
       - name: Install tox
         run: pip install tox
