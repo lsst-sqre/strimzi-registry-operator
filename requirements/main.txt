@@ -48,9 +48,9 @@ kopf==0.21 \
     --hash=sha256:6cda8efff50aec4d0761d22e8e1027b2485b6b054b5065f5a2aa911ddf0f2cb2 \
     --hash=sha256:b44d316bb30558a7dccedd60512a9d5a7228e0e08b443fbad050478551a0d09c
     # via -r requirements/main.in
-kubernetes==23.6.0 \
-    --hash=sha256:cadb1cd7c44eae5b39b50316313343c0f2aff94529f067ec2ba44d38411158e3 \
-    --hash=sha256:dd58e286a53071bc8e32041f07f3c2236b3ed8ca5b9f57794a5077358f7ccb06
+kubernetes==24.2.0 \
+    --hash=sha256:9900f12ae92007533247167d14cdee949cd8c7721f88b4a7da5f5351da3834cd \
+    --hash=sha256:da19d58865cf903a8c7b9c3691a2e6315d583a98f0659964656dfdf645bf7e49
     # via -r requirements/main.in
 oauthlib==3.2.0 \
     --hash=sha256:23a8208d75b902797ea29fd31fa80a15ed9dc2c6c16fe73f5d346f83f6fa27a2 \
@@ -140,9 +140,9 @@ urllib3==1.26.9 \
     # via
     #   kubernetes
     #   requests
-websocket-client==1.3.2 \
-    --hash=sha256:50b21db0058f7a953d67cc0445be4b948d7fc196ecbeb8083d68d94628e4abf6 \
-    --hash=sha256:722b171be00f2b90e1d4fb2f2b53146a536ca38db1da8ff49c972a4e1365d0ef
+websocket-client==1.3.3 \
+    --hash=sha256:5d55652dc1d0b3c734f044337d929aaf83f4f9138816ec680c1aefefb4dc4877 \
+    --hash=sha256:d58c5f284d6a9bf8379dab423259fe8f85b70d5fa5d2916d5791a84594b122b1
     # via kubernetes
 
 # WARNING: The following packages were not pinned, but pip requires them to be
