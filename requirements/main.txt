@@ -66,9 +66,9 @@ pyasn1-modules==0.2.8 \
     --hash=sha256:905f84c712230b2c592c19470d3ca8d552de726050d1d1716282a1f6146be65e \
     --hash=sha256:a50b808ffeb97cb3601dd25981f6b016cbb3d31fbf57a8b8a87428e6158d0c74
     # via google-auth
-pykube-ng==22.6.0 \
-    --hash=sha256:10555ed097362f9a24cdecfb1bec62cfa362381fb638fdd7d9664ed97d8ca2d4 \
-    --hash=sha256:bf622b23b59c00ec2930ca04c76191d31994b585e429132d33c012433dbd100e
+pykube-ng==22.7.0 \
+    --hash=sha256:1d59564485eea86677c695cc0724b4998bc5ff0b69e37d21fa8bf36379b683ce \
+    --hash=sha256:b804e1f1ded3ec202b97837517a40f4f0a13278236452fa09b9186a447187c8a
     # via kopf
 python-dateutil==2.8.2 \
     --hash=sha256:0123cacc1627ae19ddf3c27a5de5bd67ee4586fbdd6440d9748f8abb483d3e86 \
@@ -134,9 +134,9 @@ six==1.16.0 \
     #   google-auth
     #   kubernetes
     #   python-dateutil
-urllib3==1.26.9 \
-    --hash=sha256:44ece4d53fb1706f667c9bd1c648f5469a2ec925fcf3a776667042d645472c14 \
-    --hash=sha256:aabaf16477806a5e1dd19aa41f8c2b7950dd3c746362d7e3223dbe6de6ac448e
+urllib3==1.26.10 \
+    --hash=sha256:8298d6d56d39be0e3bc13c1c97d133f9b45d797169a0e11cdd0e0489d786f7ec \
+    --hash=sha256:879ba4d1e89654d9769ce13121e0f94310ea32e8d2f8cf587b77c08bbcdb30d6
     # via
     #   kubernetes
     #   pykube-ng
