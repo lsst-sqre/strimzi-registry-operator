@@ -90,7 +90,7 @@ Deploy a ``KafkaTopic`` that the Schema Registry will use as its primary storage
    apiVersion: kafka.strimzi.io/v1beta2
    kind: KafkaTopic
    metadata:
-     name: "registry-schemas"
+     name: registry-schemas
      labels:
        strimzi.io/cluster: events
    spec:
@@ -98,7 +98,7 @@ Deploy a ``KafkaTopic`` that the Schema Registry will use as its primary storage
      replicas: 3
      config:
        # http://kafka.apache.org/documentation/#topicconfigs
-       cleanup.policy: "compact"
+       cleanup.policy: compact
 
 .. important::
 
@@ -130,14 +130,14 @@ Deploy a KafkaUser for the Schema Registry that gives the Schema Registry suffic
          # Read, Write, and DescribeConfigs are known to be required
          - resource:
              type: topic
-             name: "registry-schemas"
+             name: registry-schemas
              patternType: literal
            operation: All
            type: allow
          # Allow all operations on the schema-registry* group
          - resource:
              type: group
-             name: "schema-registry"
+             name: schema-registry
              patternType: prefix
            operation: All
            type: allow
@@ -145,7 +145,7 @@ Deploy a KafkaUser for the Schema Registry that gives the Schema Registry suffic
          # (The official docs also mention DescribeConfigs?)
          - resource:
              type: topic
-             name: "__consumer_offsets"
+             name: __consumer_offsets
              patternType: literal
            operation: Describe
            type: allow
@@ -169,4 +169,4 @@ The strimzi-schema-registry operator deploys the Schema Registry given a ``Strim
 - ``strimzi-version`` is the version of the ``kafka.strimzi.io`` Custom Resource API to use.
   The correct value depends on the deployed version of Strimzi.
 - ``listener`` is the Kafka listener that the Schema Registry should use.
-  For example, ``tls`` or ``internal``.
+  Available values: ``plain``, ``tls`` and ``external``.
