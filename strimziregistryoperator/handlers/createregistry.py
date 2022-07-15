@@ -25,7 +25,7 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
     k8s_cr_api = k8s_client.CustomObjectsApi()
     k8s_core_v1_api = k8s_client.CoreV1Api()
 
-    strimzi_version = spec.get("strimzi-version", "v1beta1")
+    strimzi_version = spec.get("strimzi-version", "v1beta2")
     # Pull the KafkaUser resource so we can get the cluster name
     kafkauser = k8s_cr_api.get_namespaced_custom_object(
         group="kafka.strimzi.io",
@@ -37,7 +37,7 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
     cluster_name = kafkauser["metadata"]["labels"]["strimzi.io/cluster"]
 
     # Pull the Kafka resource so we can get the listener
-    listener_name = spec.get("listener", "internal")
+    listener_name = spec.get("listener", "tls")
     kafka = k8s_cr_api.get_namespaced_custom_object(
         group="kafka.strimzi.io",
         version=strimzi_version,
