@@ -8,15 +8,24 @@ from strimziregistryoperator.deployments import get_kafka_bootstrap_server
 
 
 def test_get_cluster_listener_strimzi_v1beta1():
-    manifest = (
-        "status:\n"
-        "  listeners:\n"
-        "  - addresses:\n"
-        "    - host: events-kafka-bootstrap.events.svc\n"
-        "      port: 9093\n"
-        "    type: tls\n"
-        "  observedGeneration: 1\n"
-    )
+    manifest = """
+apiVersion: kafka.strimzi.io/v1beta1
+kind: Kafka
+metadata:
+  name: events
+spec:
+  kafka:
+    listeners:
+      tls:
+        authentication:
+          type: "tls"
+status:
+  listeners:
+  - addresses:
+    - host: events-kafka-bootstrap.events.svc
+      port: 9093
+    type: tls
+"""
     kafka = yaml.safe_load(manifest)
 
     # Get bootstrap server
@@ -26,6 +35,27 @@ def test_get_cluster_listener_strimzi_v1beta1():
 
 def test_get_cluster_listener_bootstrap_v1beta2_oldstyle():
     manifest = r"""
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: alert-broker
+spec:
+  kafka:
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+        authentication:
+          type: tls
+      - name: external
+        port: 9094
+        type: route
+        tls: true
 status:
   clusterId: Ob95JyXzTlecnvjKVx3E2A
   conditions:
@@ -52,12 +82,11 @@ status:
       -----BEGIN CERTIFICATE-----
       redacted
       -----END CERTIFICATE-----
-    type: external
-  observedGeneration: 1
+    type: route
 """
     kafka = yaml.safe_load(manifest)
 
-    listener = get_kafka_bootstrap_server(kafka, listener_name="internal")
+    listener = get_kafka_bootstrap_server(kafka, listener_name="plain")
     assert listener == "alert-broker-kafka-bootstrap.strimzi.svc:9092"
 
     listener = get_kafka_bootstrap_server(kafka, listener_name="external")
@@ -69,6 +98,27 @@ status:
 
 def test_get_cluster_listener_bootstrap_v1beta2_newstyle():
     manifest = r"""
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: my-cluster
+spec:
+  kafka:
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+        authentication:
+          type: tls
+      - name: external1
+        port: 9094
+        type: route
+        tls: true
 status:
   listeners:
     - addresses:
