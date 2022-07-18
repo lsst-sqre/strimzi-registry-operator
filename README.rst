@@ -2,7 +2,7 @@
 strimzi-registry-operator
 #########################
 
-A Kubernetes Operator for running the `Confluent Schema Registry <https://docs.confluent.io/current/schema-registry/index.html>`_ in a `Strimzi <https://strimzi.io>`_-based `Kafka <https://kafka.apache.org/>`_ cluster that's secured with TLS.
+A Kubernetes Operator for running the `Confluent Schema Registry <https://docs.confluent.io/current/schema-registry/index.html>`_ in a `Strimzi <https://strimzi.io>`_-based `Kafka <https://kafka.apache.org/>`_ cluster that's optionally secured with TLS.
 
 Overview:
 
@@ -21,7 +21,7 @@ Two operator deployment options are available: `Helm <https://helm.sh>`__ and `K
 With Helm
 ---------
 
-A Helm chart is available for strimzi-registry-operator on GitHub at `lsst-sqre/charts <https://github.com/lsst-sqre/charts/tree/master/charts/strimzi-registry-operator>`__.
+A Helm chart is available for strimzi-registry-operator on GitHub at `lsst-sqre/charts <https://github.com/lsst-sqre/charts/tree/master/charts/strimzi-registry-operator>`_.
 
 .. code-block:: sh
 
