@@ -7,7 +7,7 @@ from ..certprocessor import create_secret
 from ..deployments import (
     create_deployment,
     create_service,
-    get_cluster_listener,
+    get_kafka_bootstrap_server,
 )
 from ..k8s import create_k8sclient, get_deployment, get_secret, get_service
 
@@ -62,8 +62,9 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
         plural="kafkas",
         name=cluster_name,
     )
-
-    bootstrap_server = get_cluster_listener(kafka, listener_name)
+    bootstrap_server = get_kafka_bootstrap_server(
+        kafka, listener_name=listener_name
+    )
 
     # Create the JKS-formatted truststore/keystore secrets
     secret = create_secret(

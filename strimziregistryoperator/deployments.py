@@ -1,13 +1,30 @@
-"""Utilities for creating deployments and related resources.
-"""
+"""Utilities for creating deployments and related resources."""
 
-__all__ = ("get_cluster_listener", "create_deployment", "create_service")
+__all__ = ["get_kafka_bootstrap_server", "create_deployment", "create_service"]
 
 import kopf
 
 
-def get_cluster_listener(kafka, listener_name="tls"):
-    """Get a listener by name from a Kafka cluster deployment."""
+def get_kafka_bootstrap_server(kafka, *, listener_name):
+    """Get the bootstrap server for a Strimzi Kafka cluster corresponding
+    to the named listener using information from the ``status.listeners``
+    field.
+
+    Parameters
+    ----------
+    kafkak : dict
+        The Kafka resource.
+    listener_name : str
+        The name of the listener. In Strimzi `v1beta2`, this is
+        `spec.listeners[].name`. In Strimzi `v1beta1`, this is
+        `spec.listeners.[tls|plain|external]`.
+
+    Returns
+    -------
+    server : str
+        The bootstrap server connection info (``host:port``) for the given
+        Kafka listener.
+    """
     try:
         listeners = kafka["status"]["listeners"]
     except KeyError:

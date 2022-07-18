@@ -1,20 +1,15 @@
-"""Tests for the strimziregistryoperator.deployments module.
-"""
+"""Tests for the strimziregistryoperator.deployments module."""
 
 import kopf
 import pytest
 import yaml
 
-from strimziregistryoperator.deployments import get_cluster_listener
+from strimziregistryoperator.deployments import get_kafka_bootstrap_server
 
 
-def test_get_cluster_listener():
+def test_get_cluster_listener_strimzi_v1beta1():
     manifest = (
         "status:\n"
-        "  conditions:\n"
-        "  - lastTransitionTime: 2019-10-15T21:27:36+0000\n"
-        '    status: "True"\n'
-        "    type: Ready\n"
         "  listeners:\n"
         "  - addresses:\n"
         "    - host: events-kafka-bootstrap.events.svc\n"
@@ -24,15 +19,12 @@ def test_get_cluster_listener():
     )
     kafka = yaml.safe_load(manifest)
 
-    # Get listener without name - should default to 'tls'
-    listener = get_cluster_listener(kafka)
-    assert listener == "events-kafka-bootstrap.events.svc:9093"
-
-    listener = get_cluster_listener(kafka, "tls")
+    # Get bootstrap server
+    listener = get_kafka_bootstrap_server(kafka, listener_name="tls")
     assert listener == "events-kafka-bootstrap.events.svc:9093"
 
 
-def test_get_cluster_listener_bootstrap():
+def test_get_cluster_listener_bootstrap_v1beta2_oldstyle():
     manifest = r"""
 status:
   clusterId: Ob95JyXzTlecnvjKVx3E2A
@@ -65,11 +57,42 @@ status:
 """
     kafka = yaml.safe_load(manifest)
 
-    listener = get_cluster_listener(kafka, "internal")
+    listener = get_kafka_bootstrap_server(kafka, listener_name="internal")
     assert listener == "alert-broker-kafka-bootstrap.strimzi.svc:9092"
 
-    listener = get_cluster_listener(kafka, "external")
+    listener = get_kafka_bootstrap_server(kafka, listener_name="external")
     assert listener == "10.106.209.159:9094"
 
     with pytest.raises(kopf.TemporaryError):
-        get_cluster_listener(kafka, "missing")
+        get_kafka_bootstrap_server(kafka, listener_name="missing")
+
+
+def test_get_cluster_listener_bootstrap_v1beta2_newstyle():
+    manifest = r"""
+status:
+  listeners:
+    - addresses:
+        - host: sasquatch-kafka-bootstrap.sasquatch.svc
+          port: 9092
+      bootstrapServers: 'sasquatch-kafka-bootstrap.sasquatch.svc:9092'
+      name: plain
+      type: plain
+    - addresses:
+        - host: sasquatch-kafka-bootstrap.sasquatch.svc
+          port: 9093
+      bootstrapServers: 'sasquatch-kafka-bootstrap.sasquatch.svc:9093'
+      certificates:
+        - |
+          -----BEGIN CERTIFICATE-----
+          redacted
+          -----END CERTIFICATE-----
+      name: tls
+      type: tls
+"""
+    kafka = yaml.safe_load(manifest)
+
+    server = get_kafka_bootstrap_server(kafka, listener_name="plain")
+    assert server == "sasquatch-kafka-bootstrap.sasquatch.svc:9092"
+
+    server = get_kafka_bootstrap_server(kafka, listener_name="tls")
+    assert server == "sasquatch-kafka-bootstrap.sasquatch.svc:9093"
