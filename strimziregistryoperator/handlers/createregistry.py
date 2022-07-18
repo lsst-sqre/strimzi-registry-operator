@@ -1,5 +1,4 @@
-"""Kopf handler for the creation of a StrimziSchemaRegistry.
-"""
+"""Kopf handler for the creation of a StrimziSchemaRegistry."""
 
 import kopf
 
@@ -17,6 +16,24 @@ from ..k8s import create_k8sclient, get_deployment, get_secret, get_service
 def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
     """Handle creation of a StrimziSchemaRegistry resource by deploying a
     new Schema Registry.
+
+    Parameters
+    ----------
+    spec : dict
+        The ``spec`` field of the ``StrimziSchemaRegistry`` custom Kubernetes
+        resource.
+    meta : dict
+        The ``metadata`` field of the ``StrimziSchemaRegistry`` custom
+        Kubernetes resource.
+    namespace : str
+        The Kubernetes namespace of the ``StrimziSchemaRegistry`` custom
+        Kubernetes resource.
+    uid : str
+        The ``metadata.uid`` field of ``StrimziSchemaRegistry``.
+    body : dict
+        The full body of the ``StrimziSchemaRegistry`` as a read-only dict.
+    logger
+        The kopf logger.
     """
     logger.info(f'Creating a new registry deployment: "{name}"')
 
