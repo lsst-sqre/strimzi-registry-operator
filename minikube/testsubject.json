@@ -1,0 +1,8 @@
+{
+  "type": "record",
+  "name": "testsubject",
+  "fields": [
+    {"name": "field1", "type": "int"},
+    {"name": "field2", "type": "string"}
+  ]
+}

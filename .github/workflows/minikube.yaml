@@ -1,0 +1,55 @@
+name: Minikube integration
+
+"on":
+  push:
+    branches:
+      - "tickets/**"
+  workflow_dispatch: {}
+
+jobs:
+
+  minikube:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install httpie
+        run: brew install httpie
+
+      - name: Set up Minikube
+        uses: medyagh/setup-minikube@v0.0.8
+        with:
+          minikube-version: "latest"
+          kubernetes-version: "v1.22.8"
+          driver: ""
+
+      - name: Test interaction with the cluster
+        run: kubectl get nodes
+
+      - name: Set up Kafka
+        shell: bash
+        working-directory: "minikube"
+        run: "./setupkafka.sh 0.29.0"
+
+      - name: Build image in Minikube
+        shell: bash
+        working-directory: "minikube"
+        run: "./buildimage.sh"
+
+      - name: Deploy strimzi-registry-operator
+        shell: bash
+        working-directory: "minikube"
+        run: "./deploysro.sh"
+
+      - name: Deploy a StrimziSchemaRegistry
+        shell: bash
+        working-directory: "minikube"
+        run: "./deployregistry.sh"
+
+      - name: Test Registry API
+        shell: bash
+        working-directory: "minikube"
+        run: "./testregistryapi.sh confluent-schema-registry"
