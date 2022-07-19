@@ -168,5 +168,104 @@ The strimzi-schema-registry operator deploys the Schema Registry given a ``Strim
 
 - ``strimzi-version`` is the version of the ``kafka.strimzi.io`` Custom Resource API to use.
   The correct value depends on the deployed version of Strimzi.
-- ``listener`` is the Kafka listener that the Schema Registry should use.
-  Available values: ``plain``, ``tls`` and ``external``.
+  The current Strimzi API  version is ``v1beta2``.
+  Strimzi versions 0.21.0 and earlier support the ``v1beta1`` API.
+
+- ``listener`` is the :ref:`name <listener-config>` of the Kafka listener that the Schema Registry should use.
+  The default value is ``tls``, but you should set this value based on your ``Kafka`` resource.
+
+.. _listener-config:
+
+The listener configuration
+""""""""""""""""""""""""""
+
+The ``spec.listener`` field in the ``StrimziSchemaRegistry`` resource specifies the Kafka broker listener that the Schema Registry uses.
+These listeners are configured in the ``Kafka`` resource you created with Strimzi.
+
+For example, consider a ``Kafka`` resource:
+
+.. code-block:: yaml
+
+   apiVersion: kafka.strimzi.io/v1beta2
+   kind: Kafka
+   metadata:
+     name: my-cluster
+   spec:
+     kafka:
+       #...
+       listeners:
+         - name: plain
+           port: 9092
+           type: internal
+           tls: false
+         - name: tls
+           port: 9093
+           type: internal
+           tls: true
+           authentication:
+             type: tls
+         - name: external1
+           port: 9094
+           type: route
+           tls: true
+         - name: external2
+           port: 9095
+           type: ingress
+           tls: true
+           authentication:
+             type: tls
+           configuration:
+             bootstrap:
+               host: bootstrap.myingress.com
+             brokers:
+             - broker: 0
+               host: broker-0.myingress.com
+             - broker: 1
+               host: broker-1.myingress.com
+             - broker: 2
+               host: broker-2.myingress.com
+       #...
+
+To use the encrypted internal listener, the ``spec.listener`` field in your ``StrimziSchemaRegistry`` resource should be ``tls``:
+
+.. code-block:: yaml
+
+   apiVersion: roundtable.lsst.codes/v1beta1
+   kind: StrimziSchemaRegistry
+   metadata:
+     name: confluent-schema-registry
+   spec:
+     listener: tls
+
+To use the unencrypted internal listener instead, the ``spec.listener`` field in your ``StrimziSchemaRegistry`` resource should be ``plain`` instead:
+
+.. code-block:: yaml
+
+   apiVersion: roundtable.lsst.codes/v1beta1
+   kind: StrimziSchemaRegistry
+   metadata:
+     name: confluent-schema-registry
+   spec:
+     listener: plain
+
+Strimzi ``v1beta1`` listener configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In older versions of Strimzi with the ``v1beta1`` API, listeners were not named.
+Instead, three types of listeners were available:
+
+.. code-block:: yaml
+
+   apiVersion: kafka.strimzi.io/v1beta1
+   kind: Kafka
+   spec:
+     kafka:
+       # ...
+       listeners:
+         plain: {}
+         tls:
+           authentication:
+             type: "tls"
+         external: {}
+
+In this case, set the ``spec.listener`` field in your ``StrimziSchemaRegistry`` to either ``plain``, ``tls``, or ``external``.
