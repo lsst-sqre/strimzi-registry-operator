@@ -164,7 +164,7 @@ def create_container_spec(*, secret_name, bootstrap_server):
 
     registry_container = {
         "name": "server",
-        "image": "confluentinc/cp-schema-registry:5.3.1",
+        "image": "confluentinc/cp-schema-registry:7.2.0",
         "imagePullPolicy": "IfNotPresent",
         "ports": [
             {
