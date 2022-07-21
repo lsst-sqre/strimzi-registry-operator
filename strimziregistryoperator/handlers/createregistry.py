@@ -64,12 +64,15 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
             listener_name,
         )
 
+    service_type = spec.get("serviceType", "ClusterIP")
+
     logger.info(
         "Creating a new Schema Registry deployment: %s with listener=%s and "
-        "strimzi-version=%s",
+        "strimzi-version=%s serviceType=%s",
         name,
         listener_name,
         strimzi_api_version,
+        service_type,
     )
 
     # Get the name of the Kafka cluster associated with the
@@ -148,7 +151,7 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
 
     # Create the http service to access the Schema Registry REST API
     if not service_exists:
-        svc_body = create_service(name=name)
+        svc_body = create_service(name=name, service_type=service_type)
         # Set the StrimziSchemaRegistry as the owner
         kopf.adopt(svc_body, owner=body)
         svc_response = k8s_core_v1_api.create_namespaced_service(

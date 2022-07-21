@@ -32,6 +32,13 @@ spec:
                   default: "tls"
                   description: >-
                     The name of the Kafka listener to use to connect.
+                serviceType:
+                  type: string
+                  default: "ClusterIP"
+                  description: >-
+                    The type of service to create for the registry. Default is
+                    ClusterIP. Can be NodePort to publish the registry
+                    externally.
   names:
     kind: StrimziSchemaRegistry
     plural: strimzischemaregistries
