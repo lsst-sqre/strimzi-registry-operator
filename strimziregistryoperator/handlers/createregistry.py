@@ -43,15 +43,22 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
 
     # Get configurations from StrimziSchemaRegistry
     try:
-        strimzi_api_version = spec["strimzi-version"]
+        strimzi_api_version = spec["strimziVersion"]
     except KeyError:
-        strimzi_api_version = "v1beta2"
-        logger.warning(
-            "StrimziSchemaRegistry %s is missing a strimzi-version, "
-            "using default %s",
-            name,
-            strimzi_api_version,
-        )
+        try:
+            strimzi_api_version = spec["strimzi-version"]
+            logger.warning(
+                "The strimzi-version configuration is deprecated. "
+                "Use strimziVersion instead."
+            )
+        except KeyError:
+            strimzi_api_version = "v1beta2"
+            logger.warning(
+                "StrimziSchemaRegistry %s is missing a strimziVersion, "
+                "using default %s",
+                name,
+                strimzi_api_version,
+            )
 
     try:
         listener_name = spec["listener"]

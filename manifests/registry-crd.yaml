@@ -21,12 +21,17 @@ spec:
               description: >-
                 The specification of the Schema Registry instance.
               properties:
-                strimzi-version:
+                strimziVersion:
                   type: string
                   default: "v1beta2"
                   description: >-
                     The version of the Strimzi Custom Resource API to use. The
                     correct value depends on the deployed version of Strimzi.
+                strimzi-version:
+                  type: string
+                  default: "v1beta2"
+                  description: >-
+                    Deprecated. Use strimziVersion instead.
                 listener:
                   type: string
                   default: "tls"
