@@ -10,6 +10,15 @@ Overview:
 - Works with Strimzi's TLS authentication and authorization by converting the TLS certificate associated with a KafkaUser into a JKS-formatted keystore and truststore that's used by Confluence Schema Registry.
 - When Strimzi updates either the Kafka cluster's CA certificate or the KafkaUser's client certificates, the operator automatically recreates the JKS truststore/keystore secrets and triggers a rolling restart of the Schema Registry pods.
 
+Contents
+========
+
+- :ref:`Deploy the operator <deploy-the-operator>`
+- :ref:`Deploy a Schema Registry <deploy-a-schema-registry>`
+- :ref:`strimzischemaregistry_configuration_properties`
+
+.. _deploy-the-operator:
+
 Deploy the operator
 ===================
 
@@ -76,6 +85,8 @@ Use the ``strimzi-registry-operator-deployment.yaml`` patch to set environment v
 
 - ``SSR_CLUSTER_NAME`` is the name of the Strimzi Kafka cluster.
 - ``SSR_NAMESPACE`` is the namespace where the Strimzi Kafka cluster is deployed and where KafkaUser resources are found.
+
+.. _deploy-a-schema-registry:
 
 Deploy a Schema Registry
 ========================
@@ -166,6 +177,13 @@ The strimzi-schema-registry operator deploys the Schema Registry given a ``Strim
      strimzi-version: v1beta2
      listener: tls
 
+The next section describes the configuration properties for the StrimziSchemaRegistry.
+
+.. _strimzischemaregistry_configuration_properties:
+
+StrimziSchemaRegistry configuration properties
+==============================================
+
 - ``strimziVersion`` is the version of the ``kafka.strimzi.io`` Custom Resource API to use.
   The correct value depends on the deployed version of Strimzi.
   The current Strimzi API  version is ``v1beta2``.
@@ -185,7 +203,7 @@ The strimzi-schema-registry operator deploys the Schema Registry given a ``Strim
 .. _listener-config:
 
 The listener configuration
-""""""""""""""""""""""""""
+--------------------------
 
 The ``spec.listener`` field in the ``StrimziSchemaRegistry`` resource specifies the Kafka broker listener that the Schema Registry uses.
 These listeners are configured in the ``Kafka`` resource you created with Strimzi.
