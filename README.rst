@@ -175,6 +175,13 @@ The strimzi-schema-registry operator deploys the Schema Registry given a ``Strim
 - ``listener`` is the :ref:`name <listener-config>` of the Kafka listener that the Schema Registry should use.
   The default value is ``tls``, but you should set this value based on your ``Kafka`` resource.
 
+- ``registryImage`` is the name of the Confluent Schema Registry Docker image (without the tag).
+  Default is ``confluentinc/cp-schema-registry``.
+
+- ``registryImageTag`` is the name of the Schema Registry Docker image's tag.
+  Use this property to change the version of the Confluent Schema Registry that you're deploying through the ``StrimziSchemaRegistry``.
+  Default is ``5.3.1``.
+
 .. _listener-config:
 
 The listener configuration

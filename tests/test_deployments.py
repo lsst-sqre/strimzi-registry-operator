@@ -5,6 +5,7 @@ import pytest
 import yaml
 
 from strimziregistryoperator.deployments import (
+    create_deployment,
     create_service,
     get_kafka_bootstrap_server,
 )
@@ -165,3 +166,21 @@ def test_create_nodeport_service() -> None:
         name="confluent-schema-registry", service_type="NodePort"
     )
     assert resource["spec"]["type"] == "NodePort"
+
+
+def test_create_deployment_custom_image() -> None:
+    """Create a schema registry deployment body with a customized image."""
+    registry_image = "demo/testimage"
+    registry_image_tag = "1.2.3"
+
+    dep_body = create_deployment(
+        name="example-server",
+        bootstrap_server="example-server.default.svc:9093",
+        secret_name="example-server",
+        secret_version="1",
+        registry_image=registry_image,
+        registry_image_tag=registry_image_tag,
+    )
+    assert dep_body["spec"]["template"]["spec"]["containers"][0]["image"] == (
+        f"{registry_image}:{registry_image_tag}"
+    )

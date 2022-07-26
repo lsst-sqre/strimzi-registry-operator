@@ -44,6 +44,18 @@ spec:
                     The type of service to create for the registry. Default is
                     ClusterIP. Can be NodePort to publish the registry
                     externally.
+                registryImage:
+                  type: string
+                  default: "confluentinc/cp-schema-registry"
+                  description: >-
+                    The Docker image for the Confluent Schema Registry.
+                registryImageTag:
+                  type: string
+                  default: "5.3.1"
+                  description: >-
+                    The Docker image tag for the Confluent Schema Registry.
+                    Use this property to control the version of the deployed
+                    schema registry.
   names:
     kind: StrimziSchemaRegistry
     plural: strimzischemaregistries

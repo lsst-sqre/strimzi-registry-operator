@@ -121,7 +121,15 @@ def _get_v1beta1_bootstrap_server(
     )
 
 
-def create_deployment(*, name, bootstrap_server, secret_name, secret_version):
+def create_deployment(
+    *,
+    name: str,
+    bootstrap_server: str,
+    secret_name: str,
+    secret_version: str,
+    registry_image: str,
+    registry_image_tag: str,
+) -> Dict[str, Any]:
     """Create the JSON resource for a Deployment of the Confluence Schema
     Registry.
 
@@ -139,6 +147,10 @@ def create_deployment(*, name, bootstrap_server, secret_name, secret_version):
     secret_version : `str`
         The ``resourceVersion`` of the Secret containing the JKS-formatted
         keystore and truststore.
+    registry_image : `str`
+        The Schema Registry docker image.
+    registry_image_tag : `str`
+        The tag for the Schema Registry docker image.
 
     Returns
     -------
@@ -148,7 +160,10 @@ def create_deployment(*, name, bootstrap_server, secret_name, secret_version):
     key_prefix = "strimziregistryoperator.roundtable.lsst.codes"
 
     registry_container = create_container_spec(
-        secret_name=secret_name, bootstrap_server=bootstrap_server
+        secret_name=secret_name,
+        bootstrap_server=bootstrap_server,
+        registry_image=registry_image,
+        registry_image_tag=registry_image_tag,
     )
 
     # The pod template
@@ -179,8 +194,28 @@ def create_deployment(*, name, bootstrap_server, secret_name, secret_version):
     return dep
 
 
-def create_container_spec(*, secret_name, bootstrap_server):
-    """Create the container spec for the Schema Registry deployment."""
+def create_container_spec(
+    *,
+    secret_name: str,
+    bootstrap_server: str,
+    registry_image: str,
+    registry_image_tag: str,
+) -> Dict[str, Any]:
+    """Create the container spec for the Schema Registry deployment.
+
+    Parameters
+    ----------
+    secret_name : `str`
+        Name of the Secret resource containing the JKS-formatted keystore
+        and truststore.
+    secret_version : `str`
+        The ``resourceVersion`` of the Secret containing the JKS-formatted
+        keystore and truststore.
+    registry_image : `str`
+        The Schema Registry docker image.
+    registry_image_tag : `str`
+        The tag for the Schema Registry docker image.
+    """
     registry_env = [
         {
             "name": "SCHEMA_REGISTRY_HOST_NAME",
@@ -243,7 +278,7 @@ def create_container_spec(*, secret_name, bootstrap_server):
 
     registry_container = {
         "name": "server",
-        "image": "confluentinc/cp-schema-registry:5.3.1",
+        "image": f"{registry_image}:{registry_image_tag}",
         "imagePullPolicy": "IfNotPresent",
         "ports": [
             {

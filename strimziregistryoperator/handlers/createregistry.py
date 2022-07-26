@@ -73,13 +73,21 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
 
     service_type = spec.get("serviceType", "ClusterIP")
 
+    registry_image = spec.get(
+        "registryImage", "confluentinc/cp-schema-registry"
+    )
+
+    registry_image_tag = spec.get("registryImageTag", "5.3.1")
+
     logger.info(
         "Creating a new Schema Registry deployment: %s with listener=%s and "
-        "strimzi-version=%s serviceType=%s",
+        "strimzi-version=%s serviceType=%s image=%s:%s",
         name,
         listener_name,
         strimzi_api_version,
         service_type,
+        registry_image,
+        registry_image_tag,
     )
 
     # Get the name of the Kafka cluster associated with the
@@ -140,6 +148,8 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
             bootstrap_server=bootstrap_server,
             secret_name=secret_name,
             secret_version=secret_version,
+            registry_image=registry_image,
+            registry_image_tag=registry_image_tag,
         )
         # Set the StrimziSchemaRegistry as the owner
         kopf.adopt(dep_body, owner=body)
