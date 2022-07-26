@@ -1,5 +1,7 @@
 """Kopf handler for the creation of a StrimziSchemaRegistry."""
 
+from typing import Dict, Optional
+
 import kopf
 
 from .. import state
@@ -79,6 +81,13 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
 
     registry_image_tag = spec.get("registryImageTag", "7.2.1")
 
+    # Limits and requests can be None so that they are omitted from the
+    # registry's deployment specification
+    registry_cpu_limit = get_nullable(spec, "cpuLimit")
+    registry_cpu_request = get_nullable(spec, "cpuRequest")
+    registry_mem_limit = get_nullable(spec, "memoryLimit")
+    registry_mem_request = get_nullable(spec, "memoryRequest")
+
     logger.info(
         "Creating a new Schema Registry deployment: %s with listener=%s and "
         "strimzi-version=%s serviceType=%s image=%s:%s",
@@ -150,6 +159,10 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
             secret_version=secret_version,
             registry_image=registry_image,
             registry_image_tag=registry_image_tag,
+            registry_cpu_limit=registry_cpu_limit,
+            registry_cpu_request=registry_cpu_request,
+            registry_mem_limit=registry_mem_limit,
+            registry_mem_request=registry_mem_request,
         )
         # Set the StrimziSchemaRegistry as the owner
         kopf.adopt(dep_body, owner=body)
@@ -180,3 +193,18 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
 
     # Add the name of the registry to the cache
     state.registry_names.add(name)
+
+
+def get_nullable(spec: Dict[str, str], key: str) -> Optional[str]:
+    """Get a nullable property of the StrimziSchemaRegistry resource.
+
+    If the propety is an empty string, it is null. If it is missing, it is =
+    null.
+    """
+    value = spec.get(key)
+    if value is None:
+        return None
+    elif value == "":
+        return None
+    else:
+        return value

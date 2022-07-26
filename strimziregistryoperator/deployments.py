@@ -2,7 +2,7 @@
 
 __all__ = ["get_kafka_bootstrap_server", "create_deployment", "create_service"]
 
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Mapping, Optional
 
 import kopf
 
@@ -129,6 +129,10 @@ def create_deployment(
     secret_version: str,
     registry_image: str,
     registry_image_tag: str,
+    registry_cpu_limit: Optional[str],
+    registry_cpu_request: Optional[str],
+    registry_mem_limit: Optional[str],
+    registry_mem_request: Optional[str],
 ) -> Dict[str, Any]:
     """Create the JSON resource for a Deployment of the Confluence Schema
     Registry.
@@ -151,6 +155,18 @@ def create_deployment(
         The Schema Registry docker image.
     registry_image_tag : `str`
         The tag for the Schema Registry docker image.
+    registry_cpu_limit : `str` or `None`
+        Requested CPU limit for the registry container. `None` omits the
+        setting from the container spec.
+    registry_cpu_request : `str` or `None`
+        Requested CPU allocation for the registry container. `None` omits the
+        setting from the container spec.
+    registry_mem_limit : `str` or `None`
+        Requested memory limit for the registry container. `None` omits the
+        setting from the container spec.
+    registry_mem_request : `str` or `None`
+        Requested memory allocation for the registry container. `None` omits
+        the setting from the container spec.
 
     Returns
     -------
@@ -164,6 +180,10 @@ def create_deployment(
         bootstrap_server=bootstrap_server,
         registry_image=registry_image,
         registry_image_tag=registry_image_tag,
+        registry_cpu_limit=registry_cpu_limit,
+        registry_cpu_request=registry_cpu_request,
+        registry_mem_limit=registry_mem_limit,
+        registry_mem_request=registry_mem_request,
     )
 
     # The pod template
@@ -200,6 +220,10 @@ def create_container_spec(
     bootstrap_server: str,
     registry_image: str,
     registry_image_tag: str,
+    registry_cpu_limit: Optional[str],
+    registry_cpu_request: Optional[str],
+    registry_mem_limit: Optional[str],
+    registry_mem_request: Optional[str],
 ) -> Dict[str, Any]:
     """Create the container spec for the Schema Registry deployment.
 
@@ -215,6 +239,18 @@ def create_container_spec(
         The Schema Registry docker image.
     registry_image_tag : `str`
         The tag for the Schema Registry docker image.
+    registry_cpu_limit : `str` or `None`
+        Requested CPU limit for the registry container. `None` omits the
+        setting from the container spec.
+    registry_cpu_request : `str` or `None`
+        Requested CPU allocation for the registry container. `None` omits the
+        setting from the container spec.
+    registry_mem_limit : `str` or `None`
+        Requested memory limit for the registry container. `None` omits the
+        setting from the container spec.
+    registry_mem_request : `str` or `None`
+        Requested memory allocation for the registry container. `None` omits
+        the setting from the container spec.
     """
     registry_env = [
         {
@@ -296,6 +332,29 @@ def create_container_spec(
             }
         ],
     }
+
+    if (
+        registry_cpu_limit
+        or registry_cpu_request
+        or registry_mem_limit
+        or registry_mem_request
+    ):
+        resource_spec: Dict[str, Dict[str, str]] = {}
+        if registry_cpu_limit or registry_mem_limit:
+            limit_spec: Dict[str, str] = {}
+            if registry_cpu_limit:
+                limit_spec["cpu"] = registry_cpu_limit
+            if registry_mem_limit:
+                limit_spec["memory"] = registry_mem_limit
+            resource_spec["limits"] = limit_spec
+        if registry_cpu_request or registry_mem_request:
+            request_spec: Dict[str, str] = {}
+            if registry_cpu_request:
+                request_spec["cpu"] = registry_cpu_request
+            if registry_mem_request:
+                request_spec["memory"] = registry_mem_request
+            resource_spec["requests"] = request_spec
+        registry_container["resources"] = resource_spec
 
     return registry_container
 

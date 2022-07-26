@@ -178,6 +178,14 @@ The next section describes the configuration properties for the `StrimziSchemaRe
   Use this property to change the version of the Confluent Schema Registry that you're deploying through the `StrimziSchemaRegistry`.
   Default is `7.2.1`.
 
+- `cpuLimit` is the cap on CPU usage for the Schema Registry container. Default is to leave unset. Example `1000m` limits to 1 CPU.
+
+- `cpuRequest` is the requested CPU for the Schema Registry container. Default is to leave unset. Example: `100m` requests 0.1 CPU.
+
+- `memoryLimit` is the cap on memory usage for the Schema Registry container. Default is to leave unset. Example `1000M` limits to 1000 megabytes.
+
+- `memoryRequest` is the requested memory for the Schema Registry container. Default is to leave unset. Example: `768M` requests 768 megabytes.
+
 ### The listener configuration
 
 The `spec.listener` field in the `StrimziSchemaRegistry` resource specifies the Kafka broker listener that the Schema Registry uses.

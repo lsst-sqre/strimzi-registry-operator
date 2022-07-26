@@ -180,7 +180,44 @@ def test_create_deployment_custom_image() -> None:
         secret_version="1",
         registry_image=registry_image,
         registry_image_tag=registry_image_tag,
+        registry_cpu_limit=None,
+        registry_mem_limit=None,
+        registry_cpu_request=None,
+        registry_mem_request=None,
     )
     assert dep_body["spec"]["template"]["spec"]["containers"][0]["image"] == (
         f"{registry_image}:{registry_image_tag}"
     )
+
+    # no resource settings
+    assert (
+        "resources"
+        not in dep_body["spec"]["template"]["spec"]["containers"][0]
+    )
+
+
+def test_create_deployment_resource_settings() -> None:
+    """Create a schema registry deployment body with a customized image."""
+    registry_image = "demo/testimage"
+    registry_image_tag = "1.2.3"
+
+    dep_body = create_deployment(
+        name="example-server",
+        bootstrap_server="example-server.default.svc:9093",
+        secret_name="example-server",
+        secret_version="1",
+        registry_image=registry_image,
+        registry_image_tag=registry_image_tag,
+        registry_cpu_limit="1000m",
+        registry_mem_limit="1000M",
+        registry_cpu_request="100m",
+        registry_mem_request="768M",
+    )
+    print(dep_body)
+    resources = dep_body["spec"]["template"]["spec"]["containers"][0][
+        "resources"
+    ]
+    assert resources["limits"]["cpu"] == "1000m"
+    assert resources["limits"]["memory"] == "1000M"
+    assert resources["requests"]["cpu"] == "100m"
+    assert resources["requests"]["memory"] == "768M"

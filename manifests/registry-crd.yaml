@@ -56,6 +56,33 @@ spec:
                     The Docker image tag for the Confluent Schema Registry.
                     Use this property to control the version of the deployed
                     schema registry.
+                cpuLimit:
+                  type: string
+                  default: ""
+                  description: >-
+                    The cap on CPU usage for the Schema Registry container.
+                    Default is to leave unset. Example 1000m limits to 1 CPU.
+                cpuRequest:
+                  type: string
+                  default: ""
+                  description: >-
+                    The requested CPU allocation for the Schema Registry
+                    container. Default is to leave unset. Example 1000m
+                    requests 1 CPU.
+                memoryLimit:
+                  type: string
+                  default: ""
+                  description: >-
+                    The cap on memory usage for the Schema Registry container.
+                    Default is to leave unset. Example 1000M limits to
+                    1000 megabytes.
+                memoryRequest:
+                  type: string
+                  default: ""
+                  description: >-
+                    The requested memory for the Schema Registry container.
+                    Default is to leave unset. Example: `768M` requests
+                    768 megabytes.
   names:
     kind: StrimziSchemaRegistry
     plural: strimzischemaregistries
