@@ -77,7 +77,7 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
         "registryImage", "confluentinc/cp-schema-registry"
     )
 
-    registry_image_tag = spec.get("registryImageTag", "5.3.1")
+    registry_image_tag = spec.get("registryImageTag", "7.2.1")
 
     logger.info(
         "Creating a new Schema Registry deployment: %s with listener=%s and "

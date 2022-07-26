@@ -51,7 +51,7 @@ spec:
                     The Docker image for the Confluent Schema Registry.
                 registryImageTag:
                   type: string
-                  default: "5.3.1"
+                  default: "7.2.1"
                   description: >-
                     The Docker image tag for the Confluent Schema Registry.
                     Use this property to control the version of the deployed

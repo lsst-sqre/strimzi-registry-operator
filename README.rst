@@ -180,7 +180,7 @@ The strimzi-schema-registry operator deploys the Schema Registry given a ``Strim
 
 - ``registryImageTag`` is the name of the Schema Registry Docker image's tag.
   Use this property to change the version of the Confluent Schema Registry that you're deploying through the ``StrimziSchemaRegistry``.
-  Default is ``5.3.1``.
+  Default is ``7.2.1``.
 
 .. _listener-config:
 
