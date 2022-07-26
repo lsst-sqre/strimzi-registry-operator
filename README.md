@@ -196,6 +196,13 @@ The next section describes the configuration properties for the `StrimziSchemaRe
   - `full`
   - `full_transitive`
 
+- `securityProtocol` is the security protocol for the Schema Registry to communicate with Kafka. Default is SSL. Can be:
+  
+  - `SSL`
+  - `PLAINTEXT`
+  - `SASL_PLAINTEXT`
+  - `SASL_SSL`
+
 ### The listener configuration
 
 The `spec.listener` field in the `StrimziSchemaRegistry` resource specifies the Kafka broker listener that the Schema Registry uses.

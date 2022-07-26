@@ -90,13 +90,17 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
     registry_mem_limit = get_nullable(spec, "memoryLimit")
     registry_mem_request = get_nullable(spec, "memoryRequest")
 
+    # Additional schema Registry configurations
     registry_compatibility_level = spec.get("compatibilitylevel", "forward")
+    security_protocol = spec.get("securityProtocol", "SSL")
 
     logger.info(
-        "Creating a new Schema Registry deployment: %s with listener=%s and "
-        "strimzi-version=%s serviceType=%s image=%s:%s",
+        "Creating a new Schema Registry deployment: %s with listener=%s "
+        "(security protocol=%s) and strimzi-version=%s serviceType=%s "
+        "image=%s:%s",
         name,
         listener_name,
+        security_protocol,
         strimzi_api_version,
         service_type,
         registry_image,
@@ -168,6 +172,7 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
             registry_mem_limit=registry_mem_limit,
             registry_mem_request=registry_mem_request,
             compatibility_level=registry_compatibility_level,
+            security_protocol=security_protocol,
         )
         # Set the StrimziSchemaRegistry as the owner
         kopf.adopt(dep_body, owner=body)

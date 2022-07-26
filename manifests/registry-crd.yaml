@@ -90,6 +90,13 @@ spec:
                     The default schema compatibility level in a subject.
                     Can be none, backward, backward_transitive, forward,
                     forward_transitive, full, and full_transitive.
+                securityProtocol:
+                  type: string
+                  default: "SSL"
+                  description: >-
+                    The security protocol for the Schema Registry to
+                    communicate with Kafka. Default is SSL. Can be SSL,
+                    PLAINTEXT, SASL_PLAINTEXT, or SASL_SSL.
   names:
     kind: StrimziSchemaRegistry
     plural: strimzischemaregistries

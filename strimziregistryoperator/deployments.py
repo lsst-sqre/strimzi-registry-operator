@@ -136,6 +136,7 @@ def create_deployment(
     registry_mem_limit: Optional[str],
     registry_mem_request: Optional[str],
     compatibility_level: str,
+    security_protocol: str,
 ) -> Dict[str, Any]:
     """Create the JSON resource for a Deployment of the Confluence Schema
     Registry.
@@ -174,6 +175,9 @@ def create_deployment(
         The default schema compatiblity in a subject. Can be one of:
         none, backward, backward_transitive, forward, forward_transitive,
         full, full_transitive.
+    security_protocol : `str`
+        The Kafka store security policy. Can be SSL, PLAINTEXT, SASL_PLAINTEXT,
+        or SASL_SSL.
 
     Returns
     -------
@@ -192,6 +196,7 @@ def create_deployment(
         registry_mem_limit=registry_mem_limit,
         registry_mem_request=registry_mem_request,
         compatibility_level=compatibility_level,
+        security_protocol=security_protocol,
     )
 
     # The pod template
@@ -233,6 +238,7 @@ def create_container_spec(
     registry_mem_limit: Optional[str],
     registry_mem_request: Optional[str],
     compatibility_level: str,
+    security_protocol: str,
 ) -> Dict[str, Any]:
     """Create the container spec for the Schema Registry deployment.
 
@@ -264,6 +270,9 @@ def create_container_spec(
         The default schema compatiblity in a subject. Can be one of:
         none, backward, backward_transitive, forward, forward_transitive,
         full, full_transitive.
+    security_protocol : `str`
+        The Kafka store security policy. Can be SSL, PLAINTEXT, SASL_PLAINTEXT,
+        or SASL_SSL.
     """
     registry_env = [
         {
@@ -316,7 +325,7 @@ def create_container_spec(
         },
         {
             "name": "SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL",
-            "value": "SSL",
+            "value": security_protocol,
         },
     ]
 
