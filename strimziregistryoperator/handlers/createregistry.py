@@ -1,5 +1,7 @@
 """Kopf handler for the creation of a StrimziSchemaRegistry."""
 
+from __future__ import annotations
+
 from typing import Dict, Optional
 
 import kopf
@@ -88,6 +90,8 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
     registry_mem_limit = get_nullable(spec, "memoryLimit")
     registry_mem_request = get_nullable(spec, "memoryRequest")
 
+    registry_compatibility_level = spec.get("compatibilitylevel", "forward")
+
     logger.info(
         "Creating a new Schema Registry deployment: %s with listener=%s and "
         "strimzi-version=%s serviceType=%s image=%s:%s",
@@ -163,6 +167,7 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
             registry_cpu_request=registry_cpu_request,
             registry_mem_limit=registry_mem_limit,
             registry_mem_request=registry_mem_request,
+            compatibility_level=registry_compatibility_level,
         )
         # Set the StrimziSchemaRegistry as the owner
         kopf.adopt(dep_body, owner=body)

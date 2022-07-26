@@ -1,10 +1,12 @@
 """Utilities for creating deployments and related resources."""
 
-__all__ = ["get_kafka_bootstrap_server", "create_deployment", "create_service"]
+from __future__ import annotations
 
 from typing import Any, Dict, Mapping, Optional
 
 import kopf
+
+__all__ = ["get_kafka_bootstrap_server", "create_deployment", "create_service"]
 
 
 def get_kafka_bootstrap_server(kafka, *, listener_name):
@@ -133,6 +135,7 @@ def create_deployment(
     registry_cpu_request: Optional[str],
     registry_mem_limit: Optional[str],
     registry_mem_request: Optional[str],
+    compatibility_level: str,
 ) -> Dict[str, Any]:
     """Create the JSON resource for a Deployment of the Confluence Schema
     Registry.
@@ -167,6 +170,10 @@ def create_deployment(
     registry_mem_request : `str` or `None`
         Requested memory allocation for the registry container. `None` omits
         the setting from the container spec.
+    compatiblity_level : `str`
+        The default schema compatiblity in a subject. Can be one of:
+        none, backward, backward_transitive, forward, forward_transitive,
+        full, full_transitive.
 
     Returns
     -------
@@ -184,6 +191,7 @@ def create_deployment(
         registry_cpu_request=registry_cpu_request,
         registry_mem_limit=registry_mem_limit,
         registry_mem_request=registry_mem_request,
+        compatibility_level=compatibility_level,
     )
 
     # The pod template
@@ -224,6 +232,7 @@ def create_container_spec(
     registry_cpu_request: Optional[str],
     registry_mem_limit: Optional[str],
     registry_mem_request: Optional[str],
+    compatibility_level: str,
 ) -> Dict[str, Any]:
     """Create the container spec for the Schema Registry deployment.
 
@@ -251,6 +260,10 @@ def create_container_spec(
     registry_mem_request : `str` or `None`
         Requested memory allocation for the registry container. `None` omits
         the setting from the container spec.
+    compatiblity_level : `str`
+        The default schema compatiblity in a subject. Can be one of:
+        none, backward, backward_transitive, forward, forward_transitive,
+        full, full_transitive.
     """
     registry_env = [
         {
@@ -262,14 +275,9 @@ def create_container_spec(
             "name": "SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS",
             "value": bootstrap_server,
         },
-        # NOTE: This can likely be left to the default
-        # {
-        #     'name': 'SCHEMA_REGISTRY_KAFKASTORE_GROUP_ID',
-        #     'value': None,  # FIXME
-        # },
         {
-            "name": "SCHEMA_REGISTRY_AVRO_COMPATIBILITY_LEVEL",
-            "value": "forward",
+            "name": "SCHEMA_REGISTRY_SCHEMA_COMPATIBILITY_LEVEL",
+            "value": compatibility_level,
         },
         {"name": "SCHEMA_REGISTRY_MASTER_ELIGIBILITY", "value": "true"},
         {

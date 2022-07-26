@@ -83,6 +83,13 @@ spec:
                     The requested memory for the Schema Registry container.
                     Default is to leave unset. Example: `768M` requests
                     768 megabytes.
+                compatibilityLevel:
+                  type: string
+                  default: "forward"
+                  description: >-
+                    The default schema compatibility level in a subject.
+                    Can be none, backward, backward_transitive, forward,
+                    forward_transitive, full, and full_transitive.
   names:
     kind: StrimziSchemaRegistry
     plural: strimzischemaregistries

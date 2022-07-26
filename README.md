@@ -186,6 +186,16 @@ The next section describes the configuration properties for the `StrimziSchemaRe
 
 - `memoryRequest` is the requested memory for the Schema Registry container. Default is to leave unset. Example: `768M` requests 768 megabytes.
 
+- `compatibilityLevel` is the default schema compatibility level, corresponding to [schema.compatibility.level](https://docs.confluent.io/platform/current/schema-registry/installation/config.html#schema-compatibility-level). Default is "forward". Possible values:
+
+  - `none`
+  - `backward`
+  - `backward_transitive`
+  - `forward`
+  - `forward_transitive`
+  - `full`
+  - `full_transitive`
+
 ### The listener configuration
 
 The `spec.listener` field in the `StrimziSchemaRegistry` resource specifies the Kafka broker listener that the Schema Registry uses.

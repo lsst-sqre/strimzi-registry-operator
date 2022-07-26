@@ -1,5 +1,9 @@
 """Tests for the strimziregistryoperator.deployments module."""
 
+from __future__ import annotations
+
+from typing import Dict, List, Optional
+
 import kopf
 import pytest
 import yaml
@@ -168,8 +172,16 @@ def test_create_nodeport_service() -> None:
     assert resource["spec"]["type"] == "NodePort"
 
 
-def test_create_deployment_custom_image() -> None:
-    """Create a schema registry deployment body with a customized image."""
+def get_env_value(env: List[Dict[str, str]], name: str) -> Optional[str]:
+    """Get the value of an environment variable in the container spec.env"""
+    for item in env:
+        if item["name"] == name:
+            return item["value"]
+    return None
+
+
+def test_create_deployment_configurations() -> None:
+    """Create a schema registry deployment body with configurations."""
     registry_image = "demo/testimage"
     registry_image_tag = "1.2.3"
 
@@ -184,9 +196,16 @@ def test_create_deployment_custom_image() -> None:
         registry_mem_limit=None,
         registry_cpu_request=None,
         registry_mem_request=None,
+        compatibility_level="backward",
     )
     assert dep_body["spec"]["template"]["spec"]["containers"][0]["image"] == (
         f"{registry_image}:{registry_image_tag}"
+    )
+
+    env = dep_body["spec"]["template"]["spec"]["containers"][0]["env"]
+    assert (
+        get_env_value(env, "SCHEMA_REGISTRY_SCHEMA_COMPATIBILITY_LEVEL")
+        == "backward"
     )
 
     # no resource settings
@@ -212,6 +231,7 @@ def test_create_deployment_resource_settings() -> None:
         registry_mem_limit="1000M",
         registry_cpu_request="100m",
         registry_mem_request="768M",
+        compatibility_level="forward",
     )
     print(dep_body)
     resources = dep_body["spec"]["template"]["spec"]["containers"][0][
