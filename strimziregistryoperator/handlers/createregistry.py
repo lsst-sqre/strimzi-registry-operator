@@ -1,5 +1,9 @@
 """Kopf handler for the creation of a StrimziSchemaRegistry."""
 
+from __future__ import annotations
+
+from typing import Dict, Optional
+
 import kopf
 
 from .. import state
@@ -43,15 +47,22 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
 
     # Get configurations from StrimziSchemaRegistry
     try:
-        strimzi_api_version = spec["strimzi-version"]
+        strimzi_api_version = spec["strimziVersion"]
     except KeyError:
-        strimzi_api_version = "v1beta2"
-        logger.warning(
-            "StrimziSchemaRegistry %s is missing a strimzi-version, "
-            "using default %s",
-            name,
-            strimzi_api_version,
-        )
+        try:
+            strimzi_api_version = spec["strimzi-version"]
+            logger.warning(
+                "The strimzi-version configuration is deprecated. "
+                "Use strimziVersion instead."
+            )
+        except KeyError:
+            strimzi_api_version = "v1beta2"
+            logger.warning(
+                "StrimziSchemaRegistry %s is missing a strimziVersion, "
+                "using default %s",
+                name,
+                strimzi_api_version,
+            )
 
     try:
         listener_name = spec["listener"]
@@ -66,13 +77,34 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
 
     service_type = spec.get("serviceType", "ClusterIP")
 
+    registry_image = spec.get(
+        "registryImage", "confluentinc/cp-schema-registry"
+    )
+
+    registry_image_tag = spec.get("registryImageTag", "7.2.1")
+
+    # Limits and requests can be None so that they are omitted from the
+    # registry's deployment specification
+    registry_cpu_limit = get_nullable(spec, "cpuLimit")
+    registry_cpu_request = get_nullable(spec, "cpuRequest")
+    registry_mem_limit = get_nullable(spec, "memoryLimit")
+    registry_mem_request = get_nullable(spec, "memoryRequest")
+
+    # Additional schema Registry configurations
+    registry_compatibility_level = spec.get("compatibilitylevel", "forward")
+    security_protocol = spec.get("securityProtocol", "SSL")
+
     logger.info(
-        "Creating a new Schema Registry deployment: %s with listener=%s and "
-        "strimzi-version=%s serviceType=%s",
+        "Creating a new Schema Registry deployment: %s with listener=%s "
+        "(security protocol=%s) and strimzi-version=%s serviceType=%s "
+        "image=%s:%s",
         name,
         listener_name,
+        security_protocol,
         strimzi_api_version,
         service_type,
+        registry_image,
+        registry_image_tag,
     )
 
     # Get the name of the Kafka cluster associated with the
@@ -133,6 +165,14 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
             bootstrap_server=bootstrap_server,
             secret_name=secret_name,
             secret_version=secret_version,
+            registry_image=registry_image,
+            registry_image_tag=registry_image_tag,
+            registry_cpu_limit=registry_cpu_limit,
+            registry_cpu_request=registry_cpu_request,
+            registry_mem_limit=registry_mem_limit,
+            registry_mem_request=registry_mem_request,
+            compatibility_level=registry_compatibility_level,
+            security_protocol=security_protocol,
         )
         # Set the StrimziSchemaRegistry as the owner
         kopf.adopt(dep_body, owner=body)
@@ -163,3 +203,18 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
 
     # Add the name of the registry to the cache
     state.registry_names.add(name)
+
+
+def get_nullable(spec: Dict[str, str], key: str) -> Optional[str]:
+    """Get a nullable property of the StrimziSchemaRegistry resource.
+
+    If the propety is an empty string, it is null. If it is missing, it is =
+    null.
+    """
+    value = spec.get(key)
+    if value is None:
+        return None
+    elif value == "":
+        return None
+    else:
+        return value

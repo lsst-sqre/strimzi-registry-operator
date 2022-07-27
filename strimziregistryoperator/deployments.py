@@ -1,10 +1,12 @@
 """Utilities for creating deployments and related resources."""
 
-__all__ = ["get_kafka_bootstrap_server", "create_deployment", "create_service"]
+from __future__ import annotations
 
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Mapping, Optional
 
 import kopf
+
+__all__ = ["get_kafka_bootstrap_server", "create_deployment", "create_service"]
 
 
 def get_kafka_bootstrap_server(kafka, *, listener_name):
@@ -121,7 +123,21 @@ def _get_v1beta1_bootstrap_server(
     )
 
 
-def create_deployment(*, name, bootstrap_server, secret_name, secret_version):
+def create_deployment(
+    *,
+    name: str,
+    bootstrap_server: str,
+    secret_name: str,
+    secret_version: str,
+    registry_image: str,
+    registry_image_tag: str,
+    registry_cpu_limit: Optional[str],
+    registry_cpu_request: Optional[str],
+    registry_mem_limit: Optional[str],
+    registry_mem_request: Optional[str],
+    compatibility_level: str,
+    security_protocol: str,
+) -> Dict[str, Any]:
     """Create the JSON resource for a Deployment of the Confluence Schema
     Registry.
 
@@ -139,6 +155,29 @@ def create_deployment(*, name, bootstrap_server, secret_name, secret_version):
     secret_version : `str`
         The ``resourceVersion`` of the Secret containing the JKS-formatted
         keystore and truststore.
+    registry_image : `str`
+        The Schema Registry docker image.
+    registry_image_tag : `str`
+        The tag for the Schema Registry docker image.
+    registry_cpu_limit : `str` or `None`
+        Requested CPU limit for the registry container. `None` omits the
+        setting from the container spec.
+    registry_cpu_request : `str` or `None`
+        Requested CPU allocation for the registry container. `None` omits the
+        setting from the container spec.
+    registry_mem_limit : `str` or `None`
+        Requested memory limit for the registry container. `None` omits the
+        setting from the container spec.
+    registry_mem_request : `str` or `None`
+        Requested memory allocation for the registry container. `None` omits
+        the setting from the container spec.
+    compatiblity_level : `str`
+        The default schema compatiblity in a subject. Can be one of:
+        none, backward, backward_transitive, forward, forward_transitive,
+        full, full_transitive.
+    security_protocol : `str`
+        The Kafka store security policy. Can be SSL, PLAINTEXT, SASL_PLAINTEXT,
+        or SASL_SSL.
 
     Returns
     -------
@@ -148,7 +187,16 @@ def create_deployment(*, name, bootstrap_server, secret_name, secret_version):
     key_prefix = "strimziregistryoperator.roundtable.lsst.codes"
 
     registry_container = create_container_spec(
-        secret_name=secret_name, bootstrap_server=bootstrap_server
+        secret_name=secret_name,
+        bootstrap_server=bootstrap_server,
+        registry_image=registry_image,
+        registry_image_tag=registry_image_tag,
+        registry_cpu_limit=registry_cpu_limit,
+        registry_cpu_request=registry_cpu_request,
+        registry_mem_limit=registry_mem_limit,
+        registry_mem_request=registry_mem_request,
+        compatibility_level=compatibility_level,
+        security_protocol=security_protocol,
     )
 
     # The pod template
@@ -179,8 +227,53 @@ def create_deployment(*, name, bootstrap_server, secret_name, secret_version):
     return dep
 
 
-def create_container_spec(*, secret_name, bootstrap_server):
-    """Create the container spec for the Schema Registry deployment."""
+def create_container_spec(
+    *,
+    secret_name: str,
+    bootstrap_server: str,
+    registry_image: str,
+    registry_image_tag: str,
+    registry_cpu_limit: Optional[str],
+    registry_cpu_request: Optional[str],
+    registry_mem_limit: Optional[str],
+    registry_mem_request: Optional[str],
+    compatibility_level: str,
+    security_protocol: str,
+) -> Dict[str, Any]:
+    """Create the container spec for the Schema Registry deployment.
+
+    Parameters
+    ----------
+    secret_name : `str`
+        Name of the Secret resource containing the JKS-formatted keystore
+        and truststore.
+    secret_version : `str`
+        The ``resourceVersion`` of the Secret containing the JKS-formatted
+        keystore and truststore.
+    registry_image : `str`
+        The Schema Registry docker image.
+    registry_image_tag : `str`
+        The tag for the Schema Registry docker image.
+    registry_cpu_limit : `str` or `None`
+        Requested CPU limit for the registry container. `None` omits the
+        setting from the container spec.
+    registry_cpu_request : `str` or `None`
+        Requested CPU allocation for the registry container. `None` omits the
+        setting from the container spec.
+    registry_mem_limit : `str` or `None`
+        Requested memory limit for the registry container. `None` omits the
+        setting from the container spec.
+    registry_mem_request : `str` or `None`
+        Requested memory allocation for the registry container. `None` omits
+        the setting from the container spec.
+    compatiblity_level : `str`
+        The default schema compatiblity in a subject. Can be one of:
+        none, backward, backward_transitive, forward, forward_transitive,
+        full, full_transitive.
+    security_protocol : `str`
+        The Kafka store security policy. Can be SSL, PLAINTEXT, SASL_PLAINTEXT,
+        or SASL_SSL.
+    """
     registry_env = [
         {
             "name": "SCHEMA_REGISTRY_HOST_NAME",
@@ -191,14 +284,9 @@ def create_container_spec(*, secret_name, bootstrap_server):
             "name": "SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS",
             "value": bootstrap_server,
         },
-        # NOTE: This can likely be left to the default
-        # {
-        #     'name': 'SCHEMA_REGISTRY_KAFKASTORE_GROUP_ID',
-        #     'value': None,  # FIXME
-        # },
         {
-            "name": "SCHEMA_REGISTRY_AVRO_COMPATIBILITY_LEVEL",
-            "value": "forward",
+            "name": "SCHEMA_REGISTRY_SCHEMA_COMPATIBILITY_LEVEL",
+            "value": compatibility_level,
         },
         {"name": "SCHEMA_REGISTRY_MASTER_ELIGIBILITY", "value": "true"},
         {
@@ -237,13 +325,13 @@ def create_container_spec(*, secret_name, bootstrap_server):
         },
         {
             "name": "SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL",
-            "value": "SSL",
+            "value": security_protocol,
         },
     ]
 
     registry_container = {
         "name": "server",
-        "image": "confluentinc/cp-schema-registry:5.3.1",
+        "image": f"{registry_image}:{registry_image_tag}",
         "imagePullPolicy": "IfNotPresent",
         "ports": [
             {
@@ -261,6 +349,29 @@ def create_container_spec(*, secret_name, bootstrap_server):
             }
         ],
     }
+
+    if (
+        registry_cpu_limit
+        or registry_cpu_request
+        or registry_mem_limit
+        or registry_mem_request
+    ):
+        resource_spec: Dict[str, Dict[str, str]] = {}
+        if registry_cpu_limit or registry_mem_limit:
+            limit_spec: Dict[str, str] = {}
+            if registry_cpu_limit:
+                limit_spec["cpu"] = registry_cpu_limit
+            if registry_mem_limit:
+                limit_spec["memory"] = registry_mem_limit
+            resource_spec["limits"] = limit_spec
+        if registry_cpu_request or registry_mem_request:
+            request_spec: Dict[str, str] = {}
+            if registry_cpu_request:
+                request_spec["cpu"] = registry_cpu_request
+            if registry_mem_request:
+                request_spec["memory"] = registry_mem_request
+            resource_spec["requests"] = request_spec
+        registry_container["resources"] = resource_spec
 
     return registry_container
 

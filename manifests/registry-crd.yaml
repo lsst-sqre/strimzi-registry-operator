@@ -21,12 +21,17 @@ spec:
               description: >-
                 The specification of the Schema Registry instance.
               properties:
-                strimzi-version:
+                strimziVersion:
                   type: string
                   default: "v1beta2"
                   description: >-
                     The version of the Strimzi Custom Resource API to use. The
                     correct value depends on the deployed version of Strimzi.
+                strimzi-version:
+                  type: string
+                  default: "v1beta2"
+                  description: >-
+                    Deprecated. Use strimziVersion instead.
                 listener:
                   type: string
                   default: "tls"
@@ -39,6 +44,59 @@ spec:
                     The type of service to create for the registry. Default is
                     ClusterIP. Can be NodePort to publish the registry
                     externally.
+                registryImage:
+                  type: string
+                  default: "confluentinc/cp-schema-registry"
+                  description: >-
+                    The Docker image for the Confluent Schema Registry.
+                registryImageTag:
+                  type: string
+                  default: "7.2.1"
+                  description: >-
+                    The Docker image tag for the Confluent Schema Registry.
+                    Use this property to control the version of the deployed
+                    schema registry.
+                cpuLimit:
+                  type: string
+                  default: ""
+                  description: >-
+                    The cap on CPU usage for the Schema Registry container.
+                    Default is to leave unset. Example 1000m limits to 1 CPU.
+                cpuRequest:
+                  type: string
+                  default: ""
+                  description: >-
+                    The requested CPU allocation for the Schema Registry
+                    container. Default is to leave unset. Example 1000m
+                    requests 1 CPU.
+                memoryLimit:
+                  type: string
+                  default: ""
+                  description: >-
+                    The cap on memory usage for the Schema Registry container.
+                    Default is to leave unset. Example 1000M limits to
+                    1000 megabytes.
+                memoryRequest:
+                  type: string
+                  default: ""
+                  description: >-
+                    The requested memory for the Schema Registry container.
+                    Default is to leave unset. Example: `768M` requests
+                    768 megabytes.
+                compatibilityLevel:
+                  type: string
+                  default: "forward"
+                  description: >-
+                    The default schema compatibility level in a subject.
+                    Can be none, backward, backward_transitive, forward,
+                    forward_transitive, full, and full_transitive.
+                securityProtocol:
+                  type: string
+                  default: "SSL"
+                  description: >-
+                    The security protocol for the Schema Registry to
+                    communicate with Kafka. Default is SSL. Can be SSL,
+                    PLAINTEXT, SASL_PLAINTEXT, or SASL_SSL.
   names:
     kind: StrimziSchemaRegistry
     plural: strimzischemaregistries
