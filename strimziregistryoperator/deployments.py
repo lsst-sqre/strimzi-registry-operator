@@ -2,7 +2,7 @@
 
 __all__ = ["get_kafka_bootstrap_server", "create_deployment", "create_service"]
 
-from typing import Mapping
+from typing import Any, Dict, Mapping
 
 import kopf
 
@@ -265,7 +265,9 @@ def create_container_spec(*, secret_name, bootstrap_server):
     return registry_container
 
 
-def create_service(*, name):
+def create_service(
+    *, name: str, service_type: str = "ClusterIp"
+) -> Dict[str, Any]:
     """Create a Service resource for the Schema Registry.
 
     Parameters
@@ -273,6 +275,9 @@ def create_service(*, name):
     name : `str`
         Name of the StrimziKafkaUser, which is also used as the name of the
         deployment.
+    service_type : `str`
+        The Kubernetes service type. Typically ClusterIP, but could be
+        NodePort for testing with Minikube.
 
     Returns
     -------
@@ -284,6 +289,7 @@ def create_service(*, name):
         "kind": "Service",
         "metadata": {"name": name, "labels": {"name": name}},
         "spec": {
+            "type": service_type,
             "ports": [{"name": "schema-registry", "port": 8081}],
             "selector": {
                 "app": name,

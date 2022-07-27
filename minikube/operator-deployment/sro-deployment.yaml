@@ -1,0 +1,15 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: strimzi-registry-operator
+spec:
+  template:
+    spec:
+      containers:
+        - name: operator
+          imagePullPolicy: Never # for locally-built image
+          env:
+            - name: SSR_CLUSTER_NAME
+              value: test-cluster
+            - name: SSR_NAMESPACE
+              value: default

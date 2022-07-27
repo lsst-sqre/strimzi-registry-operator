@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+images:
+  # adopt the docker image build locally inside minikube
+  - name: lsstsqre/strimzi-registry-operator
+    newName: local/strimzi-registry-operator
+    newTag: latest
+
+resources:
+  - ../../manifests/
+
+patches:
+  - sro-deployment.yaml

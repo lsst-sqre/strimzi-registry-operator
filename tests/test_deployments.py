@@ -4,7 +4,10 @@ import kopf
 import pytest
 import yaml
 
-from strimziregistryoperator.deployments import get_kafka_bootstrap_server
+from strimziregistryoperator.deployments import (
+    create_service,
+    get_kafka_bootstrap_server,
+)
 
 
 def test_get_cluster_listener_strimzi_v1beta1():
@@ -146,3 +149,19 @@ status:
 
     server = get_kafka_bootstrap_server(kafka, listener_name="tls")
     assert server == "sasquatch-kafka-bootstrap.sasquatch.svc:9093"
+
+
+def test_create_clusterip_service() -> None:
+    """Create a ClusterIP service resource spec for the Schema Registry."""
+    resource = create_service(
+        name="confluent-schema-registry", service_type="ClusterIP"
+    )
+    assert resource["spec"]["type"] == "ClusterIP"
+
+
+def test_create_nodeport_service() -> None:
+    """Create a NodePort service resource spec for the Schema Registry."""
+    resource = create_service(
+        name="confluent-schema-registry", service_type="NodePort"
+    )
+    assert resource["spec"]["type"] == "NodePort"

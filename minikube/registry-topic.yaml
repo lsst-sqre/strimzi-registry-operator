@@ -1,0 +1,12 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: registry-schemas
+  labels:
+    strimzi.io/cluster: test-cluster
+spec:
+  partitions: 1
+  replicas: 1 # because a single node Kafka cluster for testing
+  config:
+    # http://kafka.apache.org/documentation/#topicconfigs
+    cleanup.policy: compact
