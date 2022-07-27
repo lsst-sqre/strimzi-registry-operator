@@ -1,5 +1,4 @@
-"""Kopf handler for the creation of a StrimziSchemaRegistry.
-"""
+"""Kopf handler for the creation of a StrimziSchemaRegistry."""
 
 import kopf
 
@@ -8,7 +7,7 @@ from ..certprocessor import create_secret
 from ..deployments import (
     create_deployment,
     create_service,
-    get_cluster_listener,
+    get_kafka_bootstrap_server,
 )
 from ..k8s import create_k8sclient, get_deployment, get_secret, get_service
 
@@ -17,36 +16,86 @@ from ..k8s import create_k8sclient, get_deployment, get_secret, get_service
 def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
     """Handle creation of a StrimziSchemaRegistry resource by deploying a
     new Schema Registry.
+
+    Parameters
+    ----------
+    spec : dict
+        The ``spec`` field of the ``StrimziSchemaRegistry`` custom Kubernetes
+        resource.
+    meta : dict
+        The ``metadata`` field of the ``StrimziSchemaRegistry`` custom
+        Kubernetes resource.
+    namespace : str
+        The Kubernetes namespace of the ``StrimziSchemaRegistry`` custom
+        Kubernetes resource.
+    uid : str
+        The ``metadata.uid`` field of ``StrimziSchemaRegistry``.
+    body : dict
+        The full body of the ``StrimziSchemaRegistry`` as a read-only dict.
+    logger
+        The kopf logger.
     """
-    logger.info(f'Creating a new registry deployment: "{name}"')
 
     k8s_client = create_k8sclient()
     k8s_apps_v1_api = k8s_client.AppsV1Api()
     k8s_cr_api = k8s_client.CustomObjectsApi()
     k8s_core_v1_api = k8s_client.CoreV1Api()
 
-    strimzi_version = spec.get("strimzi-version", "v1beta2")
-    # Pull the KafkaUser resource so we can get the cluster name
+    # Get configurations from StrimziSchemaRegistry
+    try:
+        strimzi_api_version = spec["strimzi-version"]
+    except KeyError:
+        strimzi_api_version = "v1beta2"
+        logger.warning(
+            "StrimziSchemaRegistry %s is missing a strimzi-version, "
+            "using default %s",
+            name,
+            strimzi_api_version,
+        )
+
+    try:
+        listener_name = spec["listener"]
+    except KeyError:
+        listener_name = "tls"
+        logger.warning(
+            "StrimziSchemaRegistry %s is missing a listener name, "
+            "using default %s",
+            name,
+            listener_name,
+        )
+
+    logger.info(
+        "Creating a new Schema Registry deployment: %s with listener=%s and "
+        "strimzi-version=%s",
+        name,
+        listener_name,
+        strimzi_api_version,
+    )
+
+    # Get the name of the Kafka cluster associated with the
+    # StrimziSchemaRegistry's associated strimzi KafkaUser resource.
+    # The StrimziSchemaRegistry and its KafkaUser have the same name.
     kafkauser = k8s_cr_api.get_namespaced_custom_object(
         group="kafka.strimzi.io",
-        version=strimzi_version,
+        version=strimzi_api_version,
         namespace=namespace,
         plural="kafkausers",
         name=name,  # assume StrimziSchemaRegistry name matches
     )
     cluster_name = kafkauser["metadata"]["labels"]["strimzi.io/cluster"]
 
-    # Pull the Kafka resource so we can get the listener
-    listener_name = spec.get("listener", "tls")
+    # Get the Kafka bootstrap server corresponding to the configured
+    # Kafka listener name.
     kafka = k8s_cr_api.get_namespaced_custom_object(
         group="kafka.strimzi.io",
-        version=strimzi_version,
+        version=strimzi_api_version,
         namespace=namespace,
         plural="kafkas",
         name=cluster_name,
     )
-
-    bootstrap_server = get_cluster_listener(kafka, listener_name)
+    bootstrap_server = get_kafka_bootstrap_server(
+        kafka, listener_name=listener_name
+    )
 
     # Create the JKS-formatted truststore/keystore secrets
     secret = create_secret(

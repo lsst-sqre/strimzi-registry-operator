@@ -1,13 +1,54 @@
-"""Utilities for creating deployments and related resources.
-"""
+"""Utilities for creating deployments and related resources."""
 
-__all__ = ("get_cluster_listener", "create_deployment", "create_service")
+__all__ = ["get_kafka_bootstrap_server", "create_deployment", "create_service"]
+
+from typing import Mapping
 
 import kopf
 
 
-def get_cluster_listener(kafka, listener_name="tls"):
-    """Get a listener by name from a Kafka cluster deployment."""
+def get_kafka_bootstrap_server(kafka, *, listener_name):
+    """Get the bootstrap server address for a Strimzi Kafka cluster
+    corresponding to the named listener using information from the
+    ``status.listeners`` field.
+
+    Parameters
+    ----------
+    kafka : dict
+        The Kafka resource.
+    listener_name : str
+        The name of the listener. In Strimzi `v1beta2`, this is
+        `spec.listeners[].name`. In Strimzi `v1beta1`, this is
+        `spec.listeners.[tls|plain|external]`.
+
+    Returns
+    -------
+    server : str
+        The bootstrap server connection info (``host:port``) for the given
+        Kafka listener.
+    """
+    # Handle the legacy code path in a separate function
+    if kafka["apiVersion"] == "kafka.strimzi.io/v1beta1":
+        return _get_v1beta1_bootstrap_server(
+            kafka, listener_type=listener_name
+        )
+
+    # This assumes kafka.strimzi.io/v1beta2 or later
+
+    # As a fallback for some strimzi v1beta2 representations of
+    # status.listeners, the status.listeners[].name field might be missing
+    # so we need to use the status.listeners[].type field instead. First
+    # look up the type corresponding the the named listener.
+    listener_types = {
+        listener["name"]: listener["type"]
+        for listener in kafka["spec"]["kafka"]["listeners"]
+    }
+    if listener_name not in listener_types:
+        raise kopf.TemporaryError(
+            f"Listener named {listener_name} is not known. Available "
+            f"listeners are {', '.join(listener_types.keys())}"
+        )
+
     try:
         listeners = kafka["status"]["listeners"]
     except KeyError:
@@ -18,28 +59,66 @@ def get_cluster_listener(kafka, listener_name="tls"):
 
     for listener in listeners:
         try:
-            # For various historical reasons, the 'name' of the listener is
-            # called 'type' in the status field of a Kafka resource from
-            # Strimzi.
-            if listener["type"] == listener_name:
-                # Convenience field available in some versions of Strimzi.
-                if "bootstrapServers" in listener:
-                    return listener["bootstrapServers"]
+            # Current v1beta2 strimzi specs include a
+            # status.listeners[].name field
+            if "name" in listener and listener["name"] == listener_name:
+                return _format_server_address(listener)
 
-                # fall back to constructing it ourselves from the first address
-                # on the listener, which should usually work.
-                else:
-                    address = listener["addresses"][0]
-                    return f'{address["host"]}:{address["port"]}'
+            # Otherwise use the easlier mapping of listener types to types
+            # for the case when only status.listeners[].type is available.
+            # There's potential degeneracy, but what can we do?
+            elif listener["type"] == listener_types[listener_name]:
+                return _format_server_address(listener)
+
         except (KeyError, IndexError):
             continue
 
     all_names = [listener.get("type") for listener in listeners]
     msg = (
         f"Could not find address of a listener named {listener_name} "
-        f"from the Kafka resource. Available names: {all_names}"
+        f"from the Kafka resource. Available names: {', '.join(all_names)}"
     )
-    raise kopf.TemporaryError(msg, delay=10)
+    raise kopf.Error(msg, delay=10)
+
+
+def _format_server_address(listener_status: dict) -> str:
+    # newer versions of Strimzi provide a status.listeners[].bootstrapServers
+    # field, but we can compute that from
+    # status.listeners[].addresses[0] as a fallback
+    if "bootstrapServers" in listener_status.keys():
+        return listener_status["bootstrapServers"]
+    else:
+        address = listener_status["addresses"][0]
+        return f'{address["host"]}:{address["port"]}'
+
+
+def _get_v1beta1_bootstrap_server(
+    kafka: Mapping, *, listener_type: str
+) -> str:
+    try:
+        listeners_status = kafka["status"]["listeners"]
+    except KeyError:
+        raise kopf.TemporaryError(
+            "Could not get status.listeners from Kafka resource.",
+            delay=10,
+        )
+
+    for listener_status in listeners_status:
+        try:
+            if listener_status["type"] == listener_type:
+                # build boostrap server connection info
+                return _format_server_address(listener_status)
+        except (KeyError, IndexError):
+            continue
+
+    all_listener_types = [
+        listener.get("type", "UNKNOWN") for listener in listeners_status
+    ]
+    raise kopf.TemporaryError(
+        f"Could not find address of a {listener_type} listener"
+        f"from the Kafka resource. Available types: {all_listener_types}",
+        delay=10,
+    )
 
 
 def create_deployment(*, name, bootstrap_server, secret_name, secret_version):
