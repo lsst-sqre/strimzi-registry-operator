@@ -47,7 +47,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - github.com/lsst-sqre/strimzi-registry-operator.git//manifests?ref=0.4.1
+  - github.com/lsst-sqre/strimzi-registry-operator.git//manifests?ref=0.5.0
 
 patches:
   - strimzi-registry-operator-deployment.yaml
