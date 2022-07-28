@@ -47,7 +47,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - github.com/lsst-sqre/strimzi-registry-operator.git//manifests?ref=0.4.1
+  - github.com/lsst-sqre/strimzi-registry-operator.git//manifests?ref=0.5.0
 
 patches:
   - strimzi-registry-operator-deployment.yaml
@@ -154,13 +154,35 @@ kind: StrimziSchemaRegistry
 metadata:
   name: confluent-schema-registry
 spec:
-  strimzi-version: v1beta2
+  strimziVersion: v1beta2
   listener: tls
 ```
 
-The next section describes the configuration properties for the `StrimziSchemaRegistry`.
+[The next section](#strimzischemaregistry-configuration-properties) describes the configuration properties for the `StrimziSchemaRegistry`.
 
 ## StrimziSchemaRegistry configuration properties
+
+These configurations can be set as fields of the `StrimziSchemaRegistry`'s `spec` field:
+
+```yaml
+apiVersion: roundtable.lsst.codes/v1beta1
+kind: StrimziSchemaRegistry
+metadata:
+  name: confluent-schema-registry
+spec:
+  strimziVersion: v1beta2
+  listener: tls
+  securityProtocol: tls
+  compatibilityLevel: forward
+  registryImage: confluentinc/cp-schema-registry
+  registryImageTag: "7.2.1"
+  cpuLimit: ""
+  cpuRequest: ""
+  memoryLimit: ""
+  memoryRequest: ""
+```
+
+### Strimzi-related configurations
 
 - `strimziVersion` is the version of the `kafka.strimzi.io` Custom Resource API to use.
   The correct value depends on the deployed version of Strimzi.
@@ -168,8 +190,35 @@ The next section describes the configuration properties for the `StrimziSchemaRe
   Strimzi versions 0.21.0 and earlier support the `v1beta1` API.
   (A deprecated version of the configuration is `strimzi-version`.)
 
+### Schema Registry-related configurations
+
 - `listener` is the **name** of the Kafka listener that the Schema Registry should use.
   The default value is `tls`, but you should set this value based on your `Kafka` resource.
+  The ["In-detail: listener configuration"](#in-detail-listener-configuration) section, below, explains this in more detail.
+  See also: Schema Registry [listeners](https://docs.confluent.io/platform/current/schema-registry/installation/config.html#listeners) docs.
+
+- `securityProtocol` is the security protocol for the Schema Registry to communicate with Kafka. Default is SSL. Can be:
+  
+  - `SSL`
+  - `PLAINTEXT`
+  - `SASL_PLAINTEXT`
+  - `SASL_SSL`
+
+  See also: Schema Registry [kafkastore.security.protocol](https://docs.confluent.io/platform/current/schema-registry/installation/config.html#kafkastore-security-protocol) docs.
+
+- `compatibilityLevel` is the default schema compatibility level. Default is "forward". Possible values:
+
+  - `none`
+  - `backward`
+  - `backward_transitive`
+  - `forward`
+  - `forward_transitive`
+  - `full`
+  - `full_transitive`
+
+  See also: Schema Registry [schema.compatibility.level](https://docs.confluent.io/platform/current/schema-registry/installation/config.html#schema-compatibility-level) docs.
+
+### Kubernetes configurations for the Schema Registry
 
 - `registryImage` is the name of the Confluent Schema Registry Docker image (without the tag).
   Default is `confluentinc/cp-schema-registry`.
@@ -186,24 +235,7 @@ The next section describes the configuration properties for the `StrimziSchemaRe
 
 - `memoryRequest` is the requested memory for the Schema Registry container. Default is to leave unset. Example: `768M` requests 768 megabytes.
 
-- `compatibilityLevel` is the default schema compatibility level, corresponding to [schema.compatibility.level](https://docs.confluent.io/platform/current/schema-registry/installation/config.html#schema-compatibility-level). Default is "forward". Possible values:
-
-  - `none`
-  - `backward`
-  - `backward_transitive`
-  - `forward`
-  - `forward_transitive`
-  - `full`
-  - `full_transitive`
-
-- `securityProtocol` is the security protocol for the Schema Registry to communicate with Kafka. Default is SSL. Can be:
-  
-  - `SSL`
-  - `PLAINTEXT`
-  - `SASL_PLAINTEXT`
-  - `SASL_SSL`
-
-### The listener configuration
+### In detail: listener configuration
 
 The `spec.listener` field in the `StrimziSchemaRegistry` resource specifies the Kafka broker listener that the Schema Registry uses.
 These listeners are configured in the `Kafka` resource you created with Strimzi.

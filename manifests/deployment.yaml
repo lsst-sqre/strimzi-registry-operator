@@ -17,5 +17,5 @@ spec:
       serviceAccountName: strimzi-registry-operator
       containers:
         - name: operator
-          image: lsstsqre/strimzi-registry-operator:build
-          imagePullPolicy: Always
+          image: ghcr.io/lsst-sqre/strimzi-registry-operator:latest
+          imagePullPolicy: IfNotPresent

@@ -3,7 +3,7 @@ kind: Kustomization
 
 images:
   # adopt the docker image build locally inside minikube
-  - name: lsstsqre/strimzi-registry-operator
+  - name: ghcr.io/lsst-sqre/strimzi-registry-operator
     newName: local/strimzi-registry-operator
     newTag: latest
 
