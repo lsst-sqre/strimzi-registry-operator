@@ -6,6 +6,6 @@
 #     make update-deps
 
 PyYAML
-kopf==0.21
+kopf
 kubernetes
 async_timeout
