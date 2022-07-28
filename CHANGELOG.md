@@ -11,3 +11,5 @@ The `StrimziSchemaRegistry` CRD has new and revised fields, which you should rev
 - The default subject compatibility level in the Schema Registry ([schema.compatibility.level](https://docs.confluent.io/platform/current/schema-registry/installation/config.html#schema-compatibility-level)) can be set with the `spec.compatibilityLevel` field of `StrimziSchemaRegistry. Details, as from previous versions of Strimzi Registry Operator, is `forward`.
 - The Schema Registry Docker image is now configurable via `registryImage` and `registryImageTag` fields of `StrimziSchemaRegistry`. The defaults are updated to Schema Registry 7.2.1.
 - You can now set CPU and memeory requests and limits for the Schema Registry through the `StrimziSchemaRegistry`.
+
+The default container registry for Strimzi Registry Operator is now `ghcr.io` (GitHub Container Registry): `ghcr.io/lsst-sqre/strimzi-registry-operator`.
