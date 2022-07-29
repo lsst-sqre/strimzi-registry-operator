@@ -1,6 +1,6 @@
 # Change log
 
-## 0.5.0 (2022-07-28)
+## 0.5.0 (2022-07-29)
 
 This release adds significant improvements for compatibility with newer versions of Strimzi and the Confluent Schema Registry.
 The `StrimziSchemaRegistry` CRD has new and revised fields, which you should review before deploying this version:
