@@ -216,7 +216,16 @@ def create_deployment(
     dep = {
         "apiVersion": "apps/v1",
         "kind": "Deployment",
-        "metadata": {"name": name, "labels": {"app": name}},
+        "metadata": {
+            "name": name,
+            "labels": {
+                "app": name,
+                "app.kubernetes.io/instance": name,
+                "app.kubernetes.io/managed-by": "strimzi-registry-operator",
+                "app.kubernetes.io/name": "strimzischemaregistry",
+                "app.kubernetes.io/part-of": name,
+            },
+        },
         "spec": {
             "replicas": 1,
             "selector": {"matchLabels": {"app": name}},
@@ -398,7 +407,16 @@ def create_service(
     s = {
         "apiVersion": "v1",
         "kind": "Service",
-        "metadata": {"name": name, "labels": {"name": name}},
+        "metadata": {
+            "name": name,
+            "labels": {
+                "name": name,
+                "app.kubernetes.io/instance": name,
+                "app.kubernetes.io/managed-by": "strimzi-registry-operator",
+                "app.kubernetes.io/name": "strimzischemaregistry",
+                "app.kubernetes.io/part-of": name,
+            },
+        },
         "spec": {
             "type": service_type,
             "ports": [{"name": "schema-registry", "port": 8081}],
