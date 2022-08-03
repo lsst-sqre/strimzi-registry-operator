@@ -1,6 +1,10 @@
 # Change log
 
-## 0.5.0 (2022-07-29)
+## 0.6.0 (2022-08-03)
+
+Strimzi Registry Operator now adds the [recommended Kubernetes labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/#labels) to the `Deployment` and `Service` resources for the Confluent Schema Registry deployment.
+
+## 0.5.0 (2022-07-28)
 
 This release adds significant improvements for compatibility with newer versions of Strimzi and the Confluent Schema Registry.
 The `StrimziSchemaRegistry` CRD has new and revised fields, which you should review before deploying this version:

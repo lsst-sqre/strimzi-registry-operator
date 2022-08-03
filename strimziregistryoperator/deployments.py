@@ -224,6 +224,7 @@ def create_deployment(
                 "app.kubernetes.io/managed-by": "strimzi-registry-operator",
                 "app.kubernetes.io/name": "strimzischemaregistry",
                 "app.kubernetes.io/part-of": name,
+                "app.kubernetes.io/version": registry_image_tag,
             },
         },
         "spec": {
