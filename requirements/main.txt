@@ -190,9 +190,9 @@ frozenlist==1.3.1 \
     # via
     #   aiohttp
     #   aiosignal
-google-auth==2.11.1 \
-    --hash=sha256:516e6623038b81430dd062a1a25ecd24f173d7c15cdf4e48a9e78bc87e97aeec \
-    --hash=sha256:53bdc0c2b4e25895575779caef4cfb3a6bdff1b7b32dc38a654d71aba35bb5f8
+google-auth==2.12.0 \
+    --hash=sha256:98f601773978c969e1769f97265e732a81a8e598da3263895023958d456ee625 \
+    --hash=sha256:f12d86502ce0f2c0174e2e70ecc8d36c69593817e67e1d9c5e34489120422e4b
     # via kubernetes
 idna==3.4 \
     --hash=sha256:814f528e8dead7d329833b91c5faa87d60bf71824cd12a7530b5526063d02cb4 \
@@ -200,9 +200,9 @@ idna==3.4 \
     # via
     #   requests
     #   yarl
-iso8601==1.0.2 \
-    --hash=sha256:27f503220e6845d9db954fb212b95b0362d8b7e6c1b2326a87061c3de93594b1 \
-    --hash=sha256:d7bc01b1c2a43b259570bb307f057abc578786ea734ba2b87b836c5efc5bd443
+iso8601==1.1.0 \
+    --hash=sha256:32811e7b81deee2063ea6d2e94f8819a86d1f3811e49d23623a41fa832bef03f \
+    --hash=sha256:8400e90141bf792bce2634df533dc57e3bee19ea120a87bebcd3da89a58ad73f
     # via kopf
 kopf==1.35.6 \
     --hash=sha256:152dfa5b964cb5f77be00f9b18360f12fe0b2c032d7b5d7e95f4690558ab9ba7 \
