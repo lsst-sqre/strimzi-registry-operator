@@ -20,7 +20,7 @@ jobs:
         run: brew install httpie
 
       - name: Set up Minikube
-        uses: medyagh/setup-minikube@v0.0.8
+        uses: medyagh/setup-minikube@v0.0.9
         with:
           minikube-version: "latest"
           kubernetes-version: "v1.22.8"
