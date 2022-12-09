@@ -101,7 +101,7 @@ async-timeout==4.0.2 \
     --hash=sha256:2163e1640ddb52b7a8c80d0a67a08587e5d245cc9c553a74a847056bc2976b15 \
     --hash=sha256:8ca1e4fcf50d07413d66d1a5e416e42cfdf5851c981d679a09851a6853383b3c
     # via
-    #   -r requirements/main.in
+    #   -r main.in
     #   aiohttp
 attrs==22.1.0 \
     --hash=sha256:29adc2665447e5191d0e7c568fde78b21f9672d344281d0c6e1ab085429b22b6 \
@@ -111,9 +111,9 @@ cachetools==5.2.0 \
     --hash=sha256:6a94c6402995a99c3970cc7e4884bb60b4a8639938157eeed436098bf9831757 \
     --hash=sha256:f9f17d2aec496a9aa6b76f53e3b614c965223c061982d434d160f930c698a9db
     # via google-auth
-certifi==2022.9.24 \
-    --hash=sha256:0d9c601124e5a6ba9712dbc60d9c53c21e34f5f641fe83002317394311bdce14 \
-    --hash=sha256:90c1a32f1d68f940488354e36370f6cca89f0f106db09518524c88d6ed83f382
+certifi==2022.12.7 \
+    --hash=sha256:35824b4c3a97115964b408844d64aa14db1cc518f6562e8d7261699d1350a9e3 \
+    --hash=sha256:4ad3232f5e926d6718ec31cfc1fcadfde020920e278684144551c91769c7bc18
     # via
     #   kubernetes
     #   requests
@@ -207,11 +207,11 @@ iso8601==1.1.0 \
 kopf==1.35.6 \
     --hash=sha256:152dfa5b964cb5f77be00f9b18360f12fe0b2c032d7b5d7e95f4690558ab9ba7 \
     --hash=sha256:b3f812072da7c16aa20e3807d9a35bb9d65df4423a68b039c6424f4e68014b82
-    # via -r requirements/main.in
+    # via -r main.in
 kubernetes==24.2.0 \
     --hash=sha256:9900f12ae92007533247167d14cdee949cd8c7721f88b4a7da5f5351da3834cd \
     --hash=sha256:da19d58865cf903a8c7b9c3691a2e6315d583a98f0659964656dfdf645bf7e49
-    # via -r requirements/main.in
+    # via -r main.in
 multidict==6.0.2 \
     --hash=sha256:0327292e745a880459ef71be14e709aaea2f783f3537588fb4ed09b6c01bca60 \
     --hash=sha256:041b81a5f6b38244b34dc18c7b6aba91f9cdaf854d9a39e5ff0b58e2b5773b9c \
@@ -339,7 +339,7 @@ pyyaml==6.0 \
     --hash=sha256:e61ceaab6f49fb8bdfaa0f92c4b57bcfbea54c09277b1b4f7ac376bfb7a7c174 \
     --hash=sha256:f84fbc98b019fef2ee9a1cb3ce93e3187a6df0b2538a651bfb890254ba9f90b5
     # via
-    #   -r requirements/main.in
+    #   -r main.in
     #   kopf
     #   kubernetes
 requests==2.28.1 \
