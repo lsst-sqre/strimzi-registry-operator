@@ -23,7 +23,7 @@ A Helm chart is available for strimzi-registry-operator on GitHub at [lsst-sqre/
 ```sh
 helm repo add lsstsqre https://lsst-sqre.github.io/charts/
 helm repo update
-helm install lsstsqre/strimzi-registry-operator --name ssr --set watchNamespace="...",clusterName="..."
+helm install lsstsqre/strimzi-registry-operator --name ssr --set clusterNamespace="...",clusterName="..."
 ```
 
 [See the Helm chart's README](https://github.com/lsst-sqre/charts/tree/master/charts/strimzi-registry-operator) for important values to set, including the names of the Strimzi Kafka cluster and namespace for `KafkaUser` resources to watch.
