@@ -101,7 +101,7 @@ async-timeout==4.0.2 \
     --hash=sha256:2163e1640ddb52b7a8c80d0a67a08587e5d245cc9c553a74a847056bc2976b15 \
     --hash=sha256:8ca1e4fcf50d07413d66d1a5e416e42cfdf5851c981d679a09851a6853383b3c
     # via
-    #   -r requirements/main.in
+    #   -r main.in
     #   aiohttp
 attrs==22.1.0 \
     --hash=sha256:29adc2665447e5191d0e7c568fde78b21f9672d344281d0c6e1ab085429b22b6 \
@@ -207,11 +207,11 @@ iso8601==1.1.0 \
 kopf==1.35.6 \
     --hash=sha256:152dfa5b964cb5f77be00f9b18360f12fe0b2c032d7b5d7e95f4690558ab9ba7 \
     --hash=sha256:b3f812072da7c16aa20e3807d9a35bb9d65df4423a68b039c6424f4e68014b82
-    # via -r requirements/main.in
+    # via -r main.in
 kubernetes==24.2.0 \
     --hash=sha256:9900f12ae92007533247167d14cdee949cd8c7721f88b4a7da5f5351da3834cd \
     --hash=sha256:da19d58865cf903a8c7b9c3691a2e6315d583a98f0659964656dfdf645bf7e49
-    # via -r requirements/main.in
+    # via -r main.in
 multidict==6.0.2 \
     --hash=sha256:0327292e745a880459ef71be14e709aaea2f783f3537588fb4ed09b6c01bca60 \
     --hash=sha256:041b81a5f6b38244b34dc18c7b6aba91f9cdaf854d9a39e5ff0b58e2b5773b9c \
@@ -275,9 +275,9 @@ multidict==6.0.2 \
     # via
     #   aiohttp
     #   yarl
-oauthlib==3.2.1 \
-    --hash=sha256:1565237372795bf6ee3e5aba5e2a85bd5a65d0e2aa5c628b9a97b7d7a0da3721 \
-    --hash=sha256:88e912ca1ad915e1dcc1c06fc9259d19de8deacd6fd17cc2df266decc2e49066
+oauthlib==3.2.2 \
+    --hash=sha256:8139f29aac13e25d502680e9e19963e83f16838d48a0d71c287fe40e7067fbca \
+    --hash=sha256:9859c40929662bec5d64f34d01c99e093149682a3f38915dc0655d5a633dd918
     # via requests-oauthlib
 pyasn1==0.4.8 \
     --hash=sha256:39c7e2ec30515947ff4e87fb6f456dfc6e84857d34be479c9d4a4ba4bf46aa5d \
@@ -339,7 +339,7 @@ pyyaml==6.0 \
     --hash=sha256:e61ceaab6f49fb8bdfaa0f92c4b57bcfbea54c09277b1b4f7ac376bfb7a7c174 \
     --hash=sha256:f84fbc98b019fef2ee9a1cb3ce93e3187a6df0b2538a651bfb890254ba9f90b5
     # via
-    #   -r requirements/main.in
+    #   -r main.in
     #   kopf
     #   kubernetes
 requests==2.28.1 \
