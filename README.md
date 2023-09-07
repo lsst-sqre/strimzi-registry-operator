@@ -125,21 +125,24 @@ spec:
           type: topic
           name: registry-schemas
           patternType: literal
-        operation: All
+        operations:
+          - All
         type: allow
       # Allow all operations on the schema-registry* group
       - resource:
           type: group
           name: schema-registry
           patternType: prefix
-        operation: All
+        operations:
+          - All
         type: allow
       # Allow Describe on the __consumer_offsets topic
       - resource:
           type: topic
           name: __consumer_offsets
           patternType: literal
-        operation: Describe
+        operations:
+          - Describe
         type: allow
 ```
 
