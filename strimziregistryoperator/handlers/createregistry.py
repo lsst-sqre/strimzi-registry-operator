@@ -91,7 +91,7 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
     registry_mem_request = get_nullable(spec, "memoryRequest")
 
     # Additional schema Registry configurations
-    registry_compatibility_level = spec.get("compatibilitylevel", "forward")
+    registry_compatibility_level = spec.get("compatibilityLevel", "forward")
     security_protocol = spec.get("securityProtocol", "SSL")
 
     logger.info(
