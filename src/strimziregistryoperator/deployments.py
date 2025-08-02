@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any
 
 import kopf
 
-__all__ = ["get_kafka_bootstrap_server", "create_deployment", "create_service"]
+__all__ = ["create_deployment", "create_service", "get_kafka_bootstrap_server"]
 
 
 def get_kafka_bootstrap_server(kafka, *, listener_name):
@@ -63,13 +64,9 @@ def get_kafka_bootstrap_server(kafka, *, listener_name):
         try:
             # Current v1beta2 strimzi specs include a
             # status.listeners[].name field
-            if "name" in listener and listener["name"] == listener_name:
-                return _format_server_address(listener)
-
-            # Otherwise use the easlier mapping of listener types to types
-            # for the case when only status.listeners[].type is available.
-            # There's potential degeneracy, but what can we do?
-            elif listener["type"] == listener_types[listener_name]:
+            if (
+                "name" in listener and listener["name"] == listener_name
+            ) or listener["type"] == listener_types[listener_name]:
                 return _format_server_address(listener)
 
         except (KeyError, IndexError):
@@ -87,11 +84,11 @@ def _format_server_address(listener_status: dict) -> str:
     # newer versions of Strimzi provide a status.listeners[].bootstrapServers
     # field, but we can compute that from
     # status.listeners[].addresses[0] as a fallback
-    if "bootstrapServers" in listener_status.keys():
+    if "bootstrapServers" in listener_status:
         return listener_status["bootstrapServers"]
     else:
         address = listener_status["addresses"][0]
-        return f'{address["host"]}:{address["port"]}'
+        return f"{address['host']}:{address['port']}"
 
 
 def _get_v1beta1_bootstrap_server(
@@ -131,13 +128,13 @@ def create_deployment(
     secret_version: str,
     registry_image: str,
     registry_image_tag: str,
-    registry_cpu_limit: Optional[str],
-    registry_cpu_request: Optional[str],
-    registry_mem_limit: Optional[str],
-    registry_mem_request: Optional[str],
+    registry_cpu_limit: str | None,
+    registry_cpu_request: str | None,
+    registry_mem_limit: str | None,
+    registry_mem_request: str | None,
     compatibility_level: str,
     security_protocol: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create the JSON resource for a Deployment of the Confluence Schema
     Registry.
 
@@ -243,13 +240,13 @@ def create_container_spec(
     bootstrap_server: str,
     registry_image: str,
     registry_image_tag: str,
-    registry_cpu_limit: Optional[str],
-    registry_cpu_request: Optional[str],
-    registry_mem_limit: Optional[str],
-    registry_mem_request: Optional[str],
+    registry_cpu_limit: str | None,
+    registry_cpu_request: str | None,
+    registry_mem_limit: str | None,
+    registry_mem_request: str | None,
     compatibility_level: str,
     security_protocol: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create the container spec for the Schema Registry deployment.
 
     Parameters
@@ -366,16 +363,16 @@ def create_container_spec(
         or registry_mem_limit
         or registry_mem_request
     ):
-        resource_spec: Dict[str, Dict[str, str]] = {}
+        resource_spec: dict[str, dict[str, str]] = {}
         if registry_cpu_limit or registry_mem_limit:
-            limit_spec: Dict[str, str] = {}
+            limit_spec: dict[str, str] = {}
             if registry_cpu_limit:
                 limit_spec["cpu"] = registry_cpu_limit
             if registry_mem_limit:
                 limit_spec["memory"] = registry_mem_limit
             resource_spec["limits"] = limit_spec
         if registry_cpu_request or registry_mem_request:
-            request_spec: Dict[str, str] = {}
+            request_spec: dict[str, str] = {}
             if registry_cpu_request:
                 request_spec["cpu"] = registry_cpu_request
             if registry_mem_request:
@@ -388,7 +385,7 @@ def create_container_spec(
 
 def create_service(
     *, name: str, service_type: str = "ClusterIp"
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a Service resource for the Schema Registry.
 
     Parameters

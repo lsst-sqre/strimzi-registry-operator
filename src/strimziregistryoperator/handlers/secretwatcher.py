@@ -4,8 +4,8 @@ for the cluster CA certificate or the client certificates.
 
 __all__ = (
     "handle_secret_change",
-    "refresh_with_new_cluster_ca",
     "refresh_with_new_client_secret",
+    "refresh_with_new_cluster_ca",
 )
 
 import kopf

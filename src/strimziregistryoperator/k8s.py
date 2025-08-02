@@ -1,4 +1,4 @@
-__all__ = ("create_k8sclient", "get_deployment", "get_service", "get_secret")
+__all__ = ("create_k8sclient", "get_deployment", "get_secret", "get_service")
 
 import json
 

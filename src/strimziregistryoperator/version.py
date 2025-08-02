@@ -1,5 +1,4 @@
-"""Accessors for the package's version information.
-"""
+"""Accessors for the package's version information."""
 
 from pkg_resources import DistributionNotFound, get_distribution
 

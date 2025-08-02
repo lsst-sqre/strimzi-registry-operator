@@ -1,12 +1,65 @@
-[build-system]
-requires = [
-    "setuptools>=42",
-    "wheel",
-    "setuptools_scm[toml]>=3.4"
+[project]
+# https://packaging.python.org/en/latest/specifications/declaring-project-metadata/
+name = "strimzi-registry-operator"
+description = "A Kubernetes Operator for deploying Confluent Schema Registry servers into a Strimzi-based Kafka cluster."
+license = "MIT"
+license-files = ["LICENSE"]
+readme = "README.md"
+keywords = ["rubin", "lsst"]
+# https://pypi.org/classifiers/
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: POSIX",
+    "Private :: Do Not Upload",
+    "Typing :: Typed",
 ]
-build-backend = 'setuptools.build_meta'
+requires-python = ">=3.13"
 
-[tool.setuptools_scm]
+dependencies = [
+    "PyYAML",
+    "kopf",
+    "kubernetes",
+    "async_timeout",
+]
+dynamic = ["version"]
+
+[project.urls]
+Source = "https://github.com/lsst-sqre/strimzi-registry-operator"
+
+[build-system]
+requires = ["setuptools>=61", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "asgi-lifespan",
+    "coverage[toml]",
+    "httpx",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-sugar",
+    "ruff",
+    "scriv[toml]",
+]
+lint = [
+    "pre-commit",
+    "pre-commit-uv",
+    "ruff",
+]
+tox = [
+    "tox>=4.24",
+    "tox-docker>=5",
+    "tox-uv>=1.25",
+]
+typing = [
+    "mypy>=1.15",
+]
 
 [tool.coverage.run]
 parallel = true
@@ -14,7 +67,7 @@ branch = true
 source = ["strimziregistryoperator"]
 
 [tool.coverage.paths]
-source = ["strimziregistryoperator", ".tox/*/site-packages"]
+source = ["src", ".tox/*/site-packages"]
 
 [tool.coverage.report]
 show_missing = true
@@ -27,29 +80,62 @@ exclude_lines = [
     "raise NotImplementedError",
     "if 0:",
     "if __name__ == .__main__.:",
-    "if TYPE_CHECKING:"
+    "if TYPE_CHECKING:",
 ]
 
-[tool.black]
-line-length = 79
-target-version = ['py38']
-exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | _build
-  | build
-  | dist
-)/
-'''
-# Use single-quoted strings so TOML treats the string like a Python r-string
-# Multi-line strings are implicitly treated by black as regular expressions
+[tool.mypy]
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+ignore_missing_imports = true
+local_partial_types = true
+plugins = ["pydantic.mypy"]
+no_implicit_reexport = true
+show_error_codes = true
+strict_equality = true
+warn_redundant_casts = true
+warn_unreachable = true
+warn_unused_ignores = true
 
-[tool.isort]
-include_trailing_comma = true
-multi_line_output = 3
-known_first_party = ["strimziregistryoperator", "tests"]
-skip = ["docs/conf.py"]
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+warn_untyped_fields = true
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+asyncio_mode = "strict"
+# The python_files setting is not for test detection (pytest will pick up any
+# test files named *_test.py without this setting) but to enable special
+# assert processing in any non-test supporting files under tests.  We
+# conventionally put test support functions under tests.support and may
+# sometimes use assert in test fixtures in conftest.py, and pytest only
+# enables magical assert processing (showing a full diff on assert failures
+# with complex data structures rather than only the assert message) in files
+# listed in python_files.
+python_files = ["tests/*.py", "tests/*/*.py"]
+
+# Use the generic Ruff configuration in ruff.toml and extend it with only
+# project-specific settings. Add a [tool.ruff.lint.extend-per-file-ignores]
+# section for project-specific ignore rules.
+[tool.ruff]
+extend = "ruff-shared.toml"
+
+[tool.ruff.lint.isort]
+known-first-party = ["schemaregistryoperator", "tests"]
+split-on-trailing-comma = false
+
+[tool.scriv]
+categories = [
+    "Backwards-incompatible changes",
+    "New features",
+    "Bug fixes",
+    "Other changes",
+]
+entry_title_template = "{{ version }} ({{ date.strftime('%Y-%m-%d') }})"
+format = "md"
+md_header_level = "2"
+new_fragment_template = "file:changelog.d/_template.md.jinja"
+skip_fragments = "_template.md.jinja"
+
+[tool.setuptools_scm]

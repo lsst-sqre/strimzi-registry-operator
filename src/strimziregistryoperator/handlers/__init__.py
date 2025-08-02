@@ -1,5 +1,4 @@
-"""Kopf handlers for the strimzi-registry-operator.
-"""
+"""Kopf handlers for the strimzi-registry-operator."""
 
 from ..startup import start_operator
 

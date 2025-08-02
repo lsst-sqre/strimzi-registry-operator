@@ -2,7 +2,7 @@
 based on the cluster's CA cert and the KafkaUser's key.
 """
 
-__all__ = ("create_secret", "create_truststore", "create_keystore")
+__all__ = ("create_keystore", "create_secret", "create_truststore")
 
 import base64
 import secrets
@@ -102,7 +102,6 @@ def create_secret(
     except Exception:
         # Either the secret doesn't exist yet or it is outdated
         logger.exception("Couldn't check JKS secret; replacing it.")
-        pass
 
     # Try to delete the old secret (if it exists)
     try:
@@ -113,7 +112,6 @@ def create_secret(
         logger.info("Deleted JKS secret")
     except Exception:
         logger.exception("Something failed with deleting JKS secret")
-        pass
 
     truststore, truststore_password = create_truststore(cluster_ca_cert)
     keystore, keystore_password = create_keystore(
@@ -347,9 +345,9 @@ def create_keystore(user_ca_cert, user_cert, user_key, password=None):
 def _print_result(result):
     command = result.args[0]
     print(f"{command} status: {result.returncode}")
-    print(f'{command} args: {" ".join(result.args)}')
-    print(f'{command} stdout:\n{result.stdout.decode("utf-8")}')
-    print(f'{command} stdin:\n{result.stderr.decode("utf-8")}')
+    print(f"{command} args: {' '.join(result.args)}")
+    print(f"{command} stdout:\n{result.stdout.decode('utf-8')}")
+    print(f"{command} stdin:\n{result.stderr.decode('utf-8')}")
 
 
 def generate_password():

@@ -1,5 +1,4 @@
-"""Code intended to run on start-up, before running any handlers.
-"""
+"""Code intended to run on start-up, before running any handlers."""
 
 __all__ = ("start_operator",)
 

@@ -1,5 +1,4 @@
-"""Constructed (cached) state as module-level attributes.
-"""
+"""Constructed (cached) state as module-level attributes."""
 
 import os
 

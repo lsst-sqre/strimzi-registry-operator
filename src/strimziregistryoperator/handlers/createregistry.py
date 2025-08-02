@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Dict, Optional
-
 import kopf
 
 from .. import state
@@ -39,7 +37,6 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
     logger
         The kopf logger.
     """
-
     k8s_client = create_k8sclient()
     k8s_apps_v1_api = k8s_client.AppsV1Api()
     k8s_cr_api = k8s_client.CustomObjectsApi()
@@ -205,16 +202,14 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
     state.registry_names.add(name)
 
 
-def get_nullable(spec: Dict[str, str], key: str) -> Optional[str]:
+def get_nullable(spec: dict[str, str], key: str) -> str | None:
     """Get a nullable property of the StrimziSchemaRegistry resource.
 
     If the propety is an empty string, it is null. If it is missing, it is =
     null.
     """
     value = spec.get(key)
-    if value is None:
-        return None
-    elif value == "":
+    if value is None or value == "":
         return None
     else:
         return value
