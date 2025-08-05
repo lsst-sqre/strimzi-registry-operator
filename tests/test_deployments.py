@@ -1,7 +1,5 @@
 """Tests for the strimziregistryoperator.deployments module."""
 
-from __future__ import annotations
-
 import kopf
 import pytest
 import yaml
@@ -211,11 +209,7 @@ def test_create_deployment_configurations() -> None:
         == "SSL"
     )
 
-    # no resource settings
-    assert (
-        "resources"
-        not in dep_body["spec"]["template"]["spec"]["containers"][0]
-    )
+    assert "resources" in dep_body["spec"]["template"]["spec"]["containers"][0]
 
 
 def test_create_deployment_resource_settings() -> None:
