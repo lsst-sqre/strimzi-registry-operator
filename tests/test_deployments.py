@@ -171,7 +171,7 @@ def test_create_nodeport_service() -> None:
 
 
 def get_env_value(env: list[dict[str, str]], name: str) -> str | None:
-    """Get the value of an environment variable in the container spec.env"""
+    """Get the value of an environment variable in the container spec.env."""
     for item in env:
         if item["name"] == name:
             return item["value"]
@@ -237,7 +237,6 @@ def test_create_deployment_resource_settings() -> None:
         compatibility_level="forward",
         security_protocol="SSL",
     )
-    print(dep_body)
     resources = dep_body["spec"]["template"]["spec"]["containers"][0][
         "resources"
     ]

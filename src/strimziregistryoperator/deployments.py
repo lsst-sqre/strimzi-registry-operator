@@ -58,11 +58,11 @@ def get_kafka_bootstrap_server(
 
     try:
         listeners = kafka["status"]["listeners"]
-    except KeyError:
+    except KeyError as err:
         raise kopf.TemporaryError(
             "Could not get status.listeners from Kafka resource.",
             delay=10,
-        )
+        ) from err
 
     for listener in listeners:
         try:
@@ -100,11 +100,11 @@ def _get_v1beta1_bootstrap_server(
 ) -> str:
     try:
         listeners_status = kafka["status"]["listeners"]
-    except KeyError:
+    except KeyError as err:
         raise kopf.TemporaryError(
             "Could not get status.listeners from Kafka resource.",
             delay=10,
-        )
+        ) from err
 
     for listener_status in listeners_status:
         try:
@@ -214,7 +214,7 @@ def create_deployment(
         },
     }
 
-    dep = {
+    return {
         "apiVersion": "apps/v1",
         "kind": "Deployment",
         "metadata": {
@@ -234,8 +234,6 @@ def create_deployment(
             "template": template,
         },
     }
-
-    return dep
 
 
 def create_container_spec(
@@ -407,7 +405,7 @@ def create_service(
     service : `dict`
         The Service resource.
     """
-    s = {
+    return {
         "apiVersion": "v1",
         "kind": "Service",
         "metadata": {
@@ -428,8 +426,6 @@ def create_service(
             },
         },
     }
-
-    return s
 
 
 def update_deployment(

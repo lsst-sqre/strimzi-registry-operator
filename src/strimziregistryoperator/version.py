@@ -1,17 +1,17 @@
 """Accessors for the package's version information."""
 
-from pkg_resources import DistributionNotFound, get_distribution
+from importlib.metadata import PackageNotFoundError, version
 
 try:
-    __version__ = get_distribution("strimzi-registry-operator").version
-except DistributionNotFound:
-    # Package is not installed
+    __version__ = version("strimzi-registry-operator")
+except PackageNotFoundError:
     __version__ = "unknown"
 
 
-def print_version() -> str:
+def get_version() -> str:
+    """Return the current version string."""
     return __version__
 
 
 if __name__ == "__main__":
-    print_version()
+    print(get_version())  # noqa: T201

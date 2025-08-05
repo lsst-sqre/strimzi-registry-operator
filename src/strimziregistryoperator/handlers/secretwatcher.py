@@ -86,14 +86,16 @@ def refresh_with_new_cluster_ca(
     namespace: str,
     logger: Any,
 ) -> None:
-    """Refresh the StrimziSchemaRegistry deployments with a new cluster CA certificate.
+    """Refresh the StrimziSchemaRegistry deployments with a new cluster
+    CA certificate.
 
     Parameters
     ----------
     cluster_ca_secret : `dict`
         The Kubernetes Secret containing the new cluster CA certificate.
     namespace : `str`
-        The Kubernetes namespace where the StrimziSchemaRegistry deployments are located.
+        The Kubernetes namespace where the StrimziSchemaRegistry deployments
+        are located.
     logger : `Any`
         A logger instance for logging messages.
     """
@@ -145,9 +147,11 @@ def refresh_with_new_client_secret(
     Parameters
     ----------
     kafkauser_secret : `dict`
-        The Kubernetes Secret containing the new client secret for the KafkaUser.
+        The Kubernetes Secret containing the new client secret for the
+        KafkaUser.
     namespace : `str`
-        The Kubernetes namespace where the StrimziSchemaRegistry deployments are located.
+        The Kubernetes namespace where the StrimziSchemaRegistry deployments
+        are located.
     logger : `Any`
         A logger instance for logging messages.
     """

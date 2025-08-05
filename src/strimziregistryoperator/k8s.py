@@ -1,3 +1,5 @@
+"""Helpers for interacting with Kubernetes APIs."""
+
 __all__ = ("create_k8sclient", "get_deployment", "get_secret", "get_service")
 
 import json
@@ -48,10 +50,7 @@ def get_deployment(
     service
         The Kubernetes Deployment resource either as a `dict` or an object.
     """
-    if raw:
-        preload_content = False
-    else:
-        preload_content = True
+    preload_content = not raw
 
     api = k8s_client.AppsV1Api()
     result = api.read_namespaced_deployment(
@@ -89,10 +88,7 @@ def get_service(
     service
         The Kubernetes Service resource either as a `dict` or an object.
     """
-    if raw:
-        preload_content = False
-    else:
-        preload_content = True
+    preload_content = not raw
 
     api = k8s_client.CoreV1Api()
     result = api.read_namespaced_service(
@@ -130,10 +126,7 @@ def get_secret(
     secret
         The Kubernetes Secret resource either as a `dict` or an object.
     """
-    if raw:
-        preload_content = False
-    else:
-        preload_content = True
+    preload_content = not raw
 
     api = k8s_client.CoreV1Api()
     result = api.read_namespaced_secret(
@@ -172,10 +165,7 @@ def get_ssr(
         The Kubernetes StrimziSchemaRegistry resource either as a `dict` or an
         object.
     """
-    if raw:
-        preload_content = False
-    else:
-        preload_content = True
+    preload_content = not raw
 
     api = k8s_client.CustomObjectsApi()
     result = api.get_namespaced_custom_object(
