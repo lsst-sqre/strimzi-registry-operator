@@ -11,23 +11,25 @@ import subprocess
 import tempfile
 from functools import lru_cache
 from pathlib import Path
+from typing import Any
 
 import kopf
+import structlog
 
 from .k8s import get_secret
 
 
 def create_secret(
     *,
-    kafka_username,
-    namespace,
-    cluster,
-    owner,
-    k8s_client,
-    cluster_ca_secret=None,
-    client_secret=None,
-    logger=None,
-):
+    kafka_username: str,
+    namespace: str,
+    cluster: str,
+    owner: kopf.Body | None,
+    k8s_client: Any,
+    cluster_ca_secret: dict[str, Any] | None = None,
+    client_secret: dict[str, Any] | None = None,
+    logger: Any | None = None,
+) -> dict[str, Any]:
     """Create and deploy a new Secret for the StrimziSchemaRegistry with
     JKS-formatted key and truststores.
 
@@ -40,7 +42,7 @@ def create_secret(
         operates.
     cluster : `str`
         The name of the Strimzi Kafka cluster.
-    owner : `dict`
+    owner :
         The object that owns the Secret; usually the StrimziSchemaRegistry.
     k8s_client
         A Kubernetes client (see
@@ -51,11 +53,14 @@ def create_secret(
         automatically retrieved for you.
     client_secret : `dict`, optional
         The Kubernetes secret resource created by Strimzi with the certificates
-        for the KafkaUser. This secret is named after ``registry_name``. If
+        for the KafkaUser. This secret is named after ``kafka_username``. If
         not set, this resource will be retrieved automatically for you.
+    logger : `logging.Logger`, optional
+        Logger to use for logging messages. If not provided, a default logger
+        will be used.
     """
     if logger is None:
-        logger = logger.getLogger(__name__)
+        logger = structlog.getLogger(__name__)
 
     key_prefix = "strimziregistryoperator.roundtable.lsst.codes"
     ca_version_key = f"{key_prefix}/caSecretVersion"
@@ -151,11 +156,28 @@ def create_secret(
     return api_instance.api_client.sanitize_for_serialization(secret)
 
 
-def decode_secret_field(value):
+def decode_secret_field(value: str) -> str:
     return base64.b64decode(value).decode("utf-8")
 
 
-def delete_secret(*, namespace, name, k8s_client):
+def delete_secret(
+    *,
+    namespace: str,
+    name: str,
+    k8s_client: Any,
+) -> None:
+    """Delete a Kubernetes Secret.
+
+    Parameters
+    ----------
+    namespace : `str`
+        The namespace where the Secret is located.
+    name : `str`
+        The name of the Secret to delete.
+    k8s_client : `Any`
+        A Kubernetes client (see
+        `strimziregistryoperator.k8s.create_k8sclient`).
+    """
     v1_api = k8s_client.CoreV1Api()
     secret = v1_api.read_namespaced_secret(name=name, namespace=namespace)
     v1_api.delete_namespaced_secret(
@@ -164,7 +186,10 @@ def delete_secret(*, namespace, name, k8s_client):
 
 
 @lru_cache(maxsize=128)
-def create_truststore(cert, password=None):
+def create_truststore(
+    cert: str,
+    password: str | None = None,
+) -> tuple[bytes, str]:
     """Create a JKS-formatted truststore using the cluster's CA certificate.
 
     Parameters
@@ -174,6 +199,9 @@ def create_truststore(cert, password=None):
         a Kubernetes Secret named ``<cluster>-cluster-ca-cert``, and
         specifially the secret key named ``ca.crt``. See
         `get_cluster_ca_cert`.
+    password : `str`, optional
+        Password to protect the output truststore with. If not set, a random
+        password will be generated.
 
     Returns
     -------
@@ -232,32 +260,33 @@ def create_truststore(cert, password=None):
 
 
 @lru_cache(maxsize=128)
-def create_keystore(user_ca_cert, user_cert, user_key, password=None):
+def create_keystore(
+    user_ca_cert: str,
+    user_cert: str,
+    user_key: str,
+    password: str | None = None,
+) -> tuple[bytes, str]:
     """Create a JKS-formatted keystore using the client's CA certificate,
     certificate, and key.
 
     Parameters
     ----------
     user_ca_cert : `str`
-        The content of the KafkaUser's CA certificate. You can get this from
-        the Kubernetes Secret named after the KafkaUser and specifically the
-        ``ca.crt`` field. See the `get_user_certs` function.
+        The content of the KafkaUser's CA certificate.
     user_cert : `str`
-        The content of the KafkaUser's certificate. You can get this from
-        the Kubernetes Secret named after the KafkaUser and specifically the
-        ``user.crt`` field. See the `get_user_certs` function.
+        The content of the KafkaUser's certificate.
     user_key : `str`
-        The content of the KafkaUser's private key. You can get this from
-        the Kubernetes Secret named after the KafkaUser and specifically the
-        ``user.key`` field. See the `get_user_certs` function.
+        The content of the KafkaUser's private key.
+    password : `str`, optional
+        Password to protect the output keystore with. If not set, a random
+        password will be generated.
 
     Returns
     -------
-    keytore_content : `bytes`
+    keystore_content : `bytes`
         The content of a JKS keystore.
     password : `str`
-        Password to protect the output keystore (``keystore_content``)
-        with.
+        The password generated for the keystore.
 
     Raises
     ------
@@ -265,12 +294,12 @@ def create_keystore(user_ca_cert, user_cert, user_key, password=None):
         Raised if the calls to :command:`keystore` or :command:`openssl` result
         in a non-zero exit status.
     RuntimeError
-        Raised if the truststore is not generated.
+        Raised if the keystore is not generated.
 
     Notes
     -----
     Internally this function calls out to the ``openssl`` and ``keytool``
-    command-line tool.
+    command-line tools.
     """
     if password is None:
         password = generate_password()
@@ -342,7 +371,8 @@ def create_keystore(user_ca_cert, user_cert, user_key, password=None):
         return keystore_path.read_bytes(), password
 
 
-def _print_result(result):
+def _print_result(result: Any) -> None:
+    """Print the result of a subprocess.run call for debugging."""
     command = result.args[0]
     print(f"{command} status: {result.returncode}")
     print(f"{command} args: {' '.join(result.args)}")
@@ -350,7 +380,7 @@ def _print_result(result):
     print(f"{command} stdin:\n{result.stderr.decode('utf-8')}")
 
 
-def generate_password():
+def generate_password() -> str:
     """Generate a random password."""
     alphabet = string.ascii_letters + string.digits
     return "".join(secrets.choice(alphabet) for i in range(24))

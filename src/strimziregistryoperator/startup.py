@@ -8,7 +8,7 @@ from . import state
 from .k8s import create_k8sclient
 
 
-def start_operator():
+def start_operator() -> None:
     """Start up the operator, priming its cache of the application state."""
     api = create_k8sclient().CustomObjectsApi()
 

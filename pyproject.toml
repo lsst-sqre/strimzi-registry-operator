@@ -59,6 +59,7 @@ tox = [
 ]
 typing = [
     "mypy>=1.15",
+    "types-PyYAML",
 ]
 
 [tool.coverage.run]
@@ -88,19 +89,12 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 ignore_missing_imports = true
 local_partial_types = true
-plugins = ["pydantic.mypy"]
 no_implicit_reexport = true
 show_error_codes = true
 strict_equality = true
 warn_redundant_casts = true
 warn_unreachable = true
 warn_unused_ignores = true
-
-[tool.pydantic-mypy]
-init_forbid_extra = true
-init_typed = true
-warn_required_dynamic_aliases = true
-warn_untyped_fields = true
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"

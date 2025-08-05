@@ -9,8 +9,8 @@ except DistributionNotFound:
     __version__ = "unknown"
 
 
-def print_version():
-    print(__version__)
+def print_version() -> str:
+    return __version__
 
 
 if __name__ == "__main__":

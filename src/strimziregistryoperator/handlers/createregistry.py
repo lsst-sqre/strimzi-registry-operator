@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import kopf
 
 from .. import state
@@ -14,8 +16,18 @@ from ..deployments import (
 from ..k8s import create_k8sclient, get_deployment, get_secret, get_service
 
 
-@kopf.on.create("roundtable.lsst.codes", "v1beta1", "strimzischemaregistries")
-def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
+@kopf.on.create("roundtable.lsst.codes", "v1beta1", "strimzischemaregistries")  # type: ignore[arg-type]
+def create_registry(
+    *,
+    spec: dict[str, Any],
+    meta: dict[str, Any],
+    namespace: str,
+    name: str,
+    uid: str,
+    logger: Any,
+    body: dict[str, Any],
+    **kwargs: Any,
+) -> None:
     """Handle creation of a StrimziSchemaRegistry resource by deploying a
     new Schema Registry.
 
@@ -134,7 +146,7 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
         kafka_username=name,  # assume the StrimziSchemaRegistry name matches
         namespace=namespace,
         cluster=cluster_name,
-        owner=body,
+        owner=cast("kopf.Body", body),
         k8s_client=k8s_client,
         logger=logger,
     )
@@ -172,7 +184,7 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
             security_protocol=security_protocol,
         )
         # Set the StrimziSchemaRegistry as the owner
-        kopf.adopt(dep_body, owner=body)
+        kopf.adopt(dep_body, owner=cast("kopf.Body", body))
         dep_response = k8s_apps_v1_api.create_namespaced_deployment(
             body=dep_body, namespace=namespace
         )
@@ -190,7 +202,7 @@ def create_registry(spec, meta, namespace, name, uid, logger, body, **kwargs):
     if not service_exists:
         svc_body = create_service(name=name, service_type=service_type)
         # Set the StrimziSchemaRegistry as the owner
-        kopf.adopt(svc_body, owner=body)
+        kopf.adopt(svc_body, owner=cast("kopf.Body", body))
         svc_response = k8s_core_v1_api.create_namespaced_service(
             body=svc_body, namespace=namespace
         )

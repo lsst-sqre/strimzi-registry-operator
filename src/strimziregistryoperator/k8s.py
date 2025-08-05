@@ -1,11 +1,12 @@
 __all__ = ("create_k8sclient", "get_deployment", "get_secret", "get_service")
 
 import json
+from typing import Any
 
 import kubernetes
 
 
-def create_k8sclient():
+def create_k8sclient() -> kubernetes.client:
     """Get a Kubernetes client configured with available cluster
     authentication.
 
@@ -21,7 +22,13 @@ def create_k8sclient():
     return kubernetes.client
 
 
-def get_deployment(*, name, namespace, k8s_client, raw=True):
+def get_deployment(
+    *,
+    name: str,
+    namespace: str,
+    k8s_client: Any,
+    raw: bool = True,
+) -> dict[str, Any] | Any:
     """Get a Deployment resource.
 
     Parameters
@@ -56,7 +63,13 @@ def get_deployment(*, name, namespace, k8s_client, raw=True):
         return result
 
 
-def get_service(*, name, namespace, k8s_client, raw=True):
+def get_service(
+    *,
+    namespace: str,
+    name: str,
+    k8s_client: Any,
+    raw: bool = True,
+) -> dict[str, Any] | Any:
     """Get a Service resource.
 
     Parameters
@@ -91,7 +104,13 @@ def get_service(*, name, namespace, k8s_client, raw=True):
         return result
 
 
-def get_secret(*, namespace, name, k8s_client, raw=True):
+def get_secret(
+    *,
+    namespace: str,
+    name: str,
+    k8s_client: Any,
+    raw: bool = True,
+) -> dict[str, Any] | Any:
     """Get a Secret resource.
 
     Parameters
@@ -126,7 +145,13 @@ def get_secret(*, namespace, name, k8s_client, raw=True):
         return result
 
 
-def get_ssr(*, namespace, name, k8s_client, raw=True):
+def get_ssr(
+    *,
+    namespace: str,
+    name: str,
+    k8s_client: Any,
+    raw: bool = True,
+) -> dict[str, Any] | Any:
     """Get a StrimziSchemaRegistry resource.
 
     Parameters

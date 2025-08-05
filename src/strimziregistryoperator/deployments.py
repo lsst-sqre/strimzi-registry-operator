@@ -10,7 +10,11 @@ import kopf
 __all__ = ["create_deployment", "create_service", "get_kafka_bootstrap_server"]
 
 
-def get_kafka_bootstrap_server(kafka, *, listener_name):
+def get_kafka_bootstrap_server(
+    kafka: dict[str, Any],
+    *,
+    listener_name: str,
+) -> str:
     """Get the bootstrap server address for a Strimzi Kafka cluster
     corresponding to the named listener using information from the
     ``status.listeners`` field.
@@ -77,7 +81,7 @@ def get_kafka_bootstrap_server(kafka, *, listener_name):
         f"Could not find address of a listener named {listener_name} "
         f"from the Kafka resource. Available names: {', '.join(all_names)}"
     )
-    raise kopf.Error(msg, delay=10)
+    raise kopf.TemporaryError(msg, delay=10)
 
 
 def _format_server_address(listener_status: dict) -> str:
@@ -355,6 +359,7 @@ def create_container_spec(
                 "readOnly": True,
             }
         ],
+        "resources": {},
     }
 
     if (
@@ -363,7 +368,7 @@ def create_container_spec(
         or registry_mem_limit
         or registry_mem_request
     ):
-        resource_spec: dict[str, dict[str, str]] = {}
+        resource_spec: dict[str, Any] = {}
         if registry_cpu_limit or registry_mem_limit:
             limit_spec: dict[str, str] = {}
             if registry_cpu_limit:
@@ -428,8 +433,13 @@ def create_service(
 
 
 def update_deployment(
-    *, deployment, secret_version, k8s_client, name, namespace
-):
+    *,
+    deployment: Any,
+    secret_version: str,
+    k8s_client: Any,
+    name: str,
+    namespace: str,
+) -> None:
     """Update the schema registry deploymeent with a new Secret version
     to trigger a refresh of all its pods.
     """

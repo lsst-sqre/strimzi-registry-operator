@@ -1,5 +1,4 @@
-"""Tests for the certprocessor module.
-"""
+"""Tests for the certprocessor module."""
 
 import pytest
 
@@ -10,7 +9,7 @@ from strimziregistryoperator.certprocessor import (
 
 
 @pytest.fixture
-def cluster_ca_cert():
+def cluster_ca_cert() -> str:
     return """
 -----BEGIN CERTIFICATE-----
 MIIFLTCCAxWgAwIBAgIUYThZW2C1f6pLM6JbgsuQusZDpKUwDQYJKoZIhvcNAQEN
@@ -46,7 +45,7 @@ sr7xIs5yJ9mzWcjYQ/9XJkIh5j0whhVFB17W9bzEnTjs
 
 
 @pytest.fixture
-def user_ca_cert():
+def user_ca_cert() -> str:
     return """
 -----BEGIN CERTIFICATE-----
 MIIFLTCCAxWgAwIBAgIUbo4/n9VcsiNCd8oFE3eNxT9LMF8wDQYJKoZIhvcNAQEN
@@ -82,7 +81,7 @@ Nx27hmW1s71b3do1YX7MYFB29XqoKS7jgMw5935ic4d/QHuGDWGa1RIsSj56nVeQ
 
 
 @pytest.fixture
-def user_cert():
+def user_cert() -> str:
     return """
 -----BEGIN CERTIFICATE-----
 MIIEHjCCAgagAwIBAgIUVGG6iqjc2FBaI0fOQ3D8bxwQZ3owDQYJKoZIhvcNAQEN
@@ -113,7 +112,7 @@ xng=
 
 
 @pytest.fixture
-def user_key():
+def user_key() -> str:
     return """
 -----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDxKUrgzIKjUPjC
@@ -146,7 +145,7 @@ AvMffvxA2Qccn47mmbmpqe4=
 """
 
 
-def test_create_truststore(cluster_ca_cert):
+def test_create_truststore(cluster_ca_cert: str) -> None:
     # NB: This test depends upon the cert fixtures, which expire in 1 year
     # (2022-10-22).
     truststore, password = create_truststore(
@@ -157,7 +156,9 @@ def test_create_truststore(cluster_ca_cert):
     assert password == "test1234"
 
 
-def test_create_keystore(user_ca_cert, user_cert, user_key):
+def test_create_keystore(
+    user_ca_cert: str, user_cert: str, user_key: str
+) -> None:
     # NB: This test depends upon the cert fixtures, which expire in 1 year
     # (2022-10-22).
     keystore, password = create_keystore(
