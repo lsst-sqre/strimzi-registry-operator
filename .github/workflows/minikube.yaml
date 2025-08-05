@@ -7,49 +7,58 @@ name: Minikube integration
   workflow_dispatch: {}
 
 jobs:
-
   minikube:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Install httpie
-        run: brew install httpie
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y httpie
 
       - name: Set up Minikube
-        uses: medyagh/setup-minikube@v0.0.8
-        with:
-          minikube-version: "latest"
-          kubernetes-version: "v1.22.8"
-          driver: ""
+        uses: medyagh/setup-minikube@latest
+        id: minikube
 
-      - name: Test interaction with the cluster
+      - name: Test Minikube cluster
         run: kubectl get nodes
 
-      - name: Set up Kafka
+      - name: Set up Kafka with Strimzi
         shell: bash
         working-directory: "minikube"
-        run: "./setupkafka.sh 0.29.0"
+        run: |
+          set -euo pipefail
+          ./setupkafka.sh 0.47.0
 
-      - name: Build image in Minikube
+      - name: Build operator image inside Minikube
         shell: bash
         working-directory: "minikube"
-        run: "./buildimage.sh"
+        run: |
+          set -euo pipefail
+          ./buildimage.sh
 
-      - name: Deploy strimzi-registry-operator
+      - name: Deploy Strimzi Registry Operator
         shell: bash
         working-directory: "minikube"
-        run: "./deploysro.sh"
+        run: |
+          set -euo pipefail
+          ./deploysro.sh
 
-      - name: Deploy a StrimziSchemaRegistry
+      - name: Deploy StrimziSchemaRegistry CR
         shell: bash
         working-directory: "minikube"
-        run: "./deployregistry.sh"
+        run: |
+          set -euo pipefail
+          ./deployregistry.sh
 
-      - name: Test Registry API
+      - name: Test Registry REST API
         shell: bash
         working-directory: "minikube"
-        run: "./testregistryapi.sh confluent-schema-registry"
+        run: |
+          set -euo pipefail
+          ./testregistryapi.sh confluent-schema-registry

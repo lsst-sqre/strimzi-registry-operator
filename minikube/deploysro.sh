@@ -6,7 +6,7 @@ set -x
 
 kustomize build operator-deployment | kubectl apply -f -
 kubectl wait -n default deployment strimzi-registry-operator \
---for condition=Available=True --timeout=600s
+--for condition=Available=True --timeout=300s
 sleep 5s
 kubectl get crds
 kubectl get deployments

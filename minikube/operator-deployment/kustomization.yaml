@@ -11,4 +11,7 @@ resources:
   - ../../manifests/
 
 patches:
-  - sro-deployment.yaml
+  - path: sro-deployment.yaml
+    target:
+      kind: Deployment
+      name: strimzi-registry-operator

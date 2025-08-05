@@ -28,7 +28,7 @@ fi
 
 # Deploy Strimzi Cluster Operator
 kubectl apply -f strimzi-$1/install/cluster-operator -n default
-kubectl wait -n default deployment strimzi-cluster-operator --for condition=Available=True --timeout=600s
+kubectl wait -n default deployment strimzi-cluster-operator --for condition=Available=True --timeout=300s
 
 # Deploy a Kafka cluster
 kubectl apply -f kafka.yaml -n default
