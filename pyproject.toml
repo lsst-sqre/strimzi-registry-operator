@@ -25,6 +25,7 @@ dependencies = [
     "kopf",
     "kubernetes",
     "async_timeout",
+    "structlog",
 ]
 dynamic = ["version"]
 
