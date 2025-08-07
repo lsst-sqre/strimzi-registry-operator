@@ -1,16 +1,21 @@
-"""Code intended to run on start-up, before running any handlers.
-"""
+"""Code intended to run on start-up, before running any handlers."""
 
 __all__ = ("start_operator",)
 
+from typing import Any
+
+import structlog
 from kubernetes.client.rest import ApiException
 
-from . import state
-from .k8s import create_k8sclient
+from strimziregistryoperator import state
+from strimziregistryoperator.k8s import create_k8sclient
 
 
-def start_operator():
+def start_operator(logger: Any) -> None:
     """Start up the operator, priming its cache of the application state."""
+    if logger is None:
+        logger = structlog.getLogger(__name__)
+
     api = create_k8sclient().CustomObjectsApi()
 
     try:
@@ -21,10 +26,10 @@ def start_operator():
             "strimzischemaregistries",
             timeout_seconds=60,
         )
-    except ApiException as e:
-        print(
+    except ApiException:
+        logger.exception(
             "Exception when calling CustomObjectsApi->"
-            "list_namespaced_custom_object: %s\n" % e
+            "list_namespaced_custom_object\n"
         )
         return
 

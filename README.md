@@ -198,7 +198,7 @@ spec:
   See also: Schema Registry [listeners](https://docs.confluent.io/platform/current/schema-registry/installation/config.html#listeners) docs.
 
 - `securityProtocol` is the security protocol for the Schema Registry to communicate with Kafka. Default is SSL. Can be:
-  
+
   - `SSL`
   - `PLAINTEXT`
   - `SASL_PLAINTEXT`

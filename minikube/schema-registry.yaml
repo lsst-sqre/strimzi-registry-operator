@@ -3,6 +3,6 @@ kind: StrimziSchemaRegistry
 metadata:
   name: confluent-schema-registry
 spec:
-  strimzi-version: v1beta2
+  strimziVersion: v1beta2
   listener: tls
   serviceType: NodePort

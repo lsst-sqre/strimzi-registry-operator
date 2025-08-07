@@ -1,9 +1,5 @@
 """Tests for the strimziregistryoperator.deployments module."""
 
-from __future__ import annotations
-
-from typing import Dict, List, Optional
-
 import kopf
 import pytest
 import yaml
@@ -15,7 +11,7 @@ from strimziregistryoperator.deployments import (
 )
 
 
-def test_get_cluster_listener_strimzi_v1beta1():
+def test_get_cluster_listener_strimzi_v1beta1() -> None:
     manifest = """
 apiVersion: kafka.strimzi.io/v1beta1
 kind: Kafka
@@ -41,7 +37,7 @@ status:
     assert listener == "events-kafka-bootstrap.events.svc:9093"
 
 
-def test_get_cluster_listener_bootstrap_v1beta2_oldstyle():
+def test_get_cluster_listener_bootstrap_v1beta2_oldstyle() -> None:
     manifest = r"""
 apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
@@ -104,7 +100,7 @@ status:
         get_kafka_bootstrap_server(kafka, listener_name="missing")
 
 
-def test_get_cluster_listener_bootstrap_v1beta2_newstyle():
+def test_get_cluster_listener_bootstrap_v1beta2_newstyle() -> None:
     manifest = r"""
 apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
@@ -172,8 +168,8 @@ def test_create_nodeport_service() -> None:
     assert resource["spec"]["type"] == "NodePort"
 
 
-def get_env_value(env: List[Dict[str, str]], name: str) -> Optional[str]:
-    """Get the value of an environment variable in the container spec.env"""
+def get_env_value(env: list[dict[str, str]], name: str) -> str | None:
+    """Get the value of an environment variable in the container spec.env."""
     for item in env:
         if item["name"] == name:
             return item["value"]
@@ -213,11 +209,7 @@ def test_create_deployment_configurations() -> None:
         == "SSL"
     )
 
-    # no resource settings
-    assert (
-        "resources"
-        not in dep_body["spec"]["template"]["spec"]["containers"][0]
-    )
+    assert "resources" in dep_body["spec"]["template"]["spec"]["containers"][0]
 
 
 def test_create_deployment_resource_settings() -> None:
@@ -239,7 +231,6 @@ def test_create_deployment_resource_settings() -> None:
         compatibility_level="forward",
         security_protocol="SSL",
     )
-    print(dep_body)
     resources = dep_body["spec"]["template"]["spec"]["containers"][0][
         "resources"
     ]

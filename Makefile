@@ -1,20 +1,24 @@
-.PHONY: update-deps
-update-deps:
-	pip install --upgrade pip-tools pip setuptools
-	pip-compile --upgrade --build-isolation --generate-hashes --output-file requirements/main.txt requirements/main.in
-	pip-compile --upgrade --build-isolation --generate-hashes --output-file requirements/dev.txt requirements/dev.in
+.PHONY: help
+help:
+	@echo "Make targets for Strimzi Registry Operator"
+	@echo "make init - Set up dev environment"
+	@echo "make run - Start a local development instance"
+	@echo "make update - Update pinned dependencies and run make init"
+	@echo "make update-deps - Update pinned dependencies"
 
 .PHONY: init
 init:
-	pip install --editable .
-	pip install --upgrade -r requirements/main.txt -r requirements/dev.txt
-	rm -rf .tox
-	pip install --upgrade tox pre-commit
-	pre-commit install
+	uv sync --frozen --all-groups
+	uv run pre-commit install
+
+.PHONY: run
+run:
+	tox run -e run
 
 .PHONY: update
 update: update-deps init
 
-.PHONY: run
-run:
-	tox -e run
+.PHONY: update-deps
+update-deps:
+	uv lock --upgrade
+	uv run --only-group=lint pre-commit autoupdate

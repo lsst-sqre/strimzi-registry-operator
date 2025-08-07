@@ -1,11 +1,14 @@
-__all__ = ("create_k8sclient", "get_deployment", "get_service", "get_secret")
+"""Helpers for interacting with Kubernetes APIs."""
+
+__all__ = ("create_k8sclient", "get_deployment", "get_secret", "get_service")
 
 import json
+from typing import Any
 
 import kubernetes
 
 
-def create_k8sclient():
+def create_k8sclient() -> kubernetes.client:
     """Get a Kubernetes client configured with available cluster
     authentication.
 
@@ -21,7 +24,13 @@ def create_k8sclient():
     return kubernetes.client
 
 
-def get_deployment(*, name, namespace, k8s_client, raw=True):
+def get_deployment(
+    *,
+    name: str,
+    namespace: str,
+    k8s_client: Any,
+    raw: bool = True,
+) -> dict[str, Any] | Any:
     """Get a Deployment resource.
 
     Parameters
@@ -41,10 +50,7 @@ def get_deployment(*, name, namespace, k8s_client, raw=True):
     service
         The Kubernetes Deployment resource either as a `dict` or an object.
     """
-    if raw:
-        preload_content = False
-    else:
-        preload_content = True
+    preload_content = not raw
 
     api = k8s_client.AppsV1Api()
     result = api.read_namespaced_deployment(
@@ -56,7 +62,13 @@ def get_deployment(*, name, namespace, k8s_client, raw=True):
         return result
 
 
-def get_service(*, name, namespace, k8s_client, raw=True):
+def get_service(
+    *,
+    namespace: str,
+    name: str,
+    k8s_client: Any,
+    raw: bool = True,
+) -> dict[str, Any] | Any:
     """Get a Service resource.
 
     Parameters
@@ -76,10 +88,7 @@ def get_service(*, name, namespace, k8s_client, raw=True):
     service
         The Kubernetes Service resource either as a `dict` or an object.
     """
-    if raw:
-        preload_content = False
-    else:
-        preload_content = True
+    preload_content = not raw
 
     api = k8s_client.CoreV1Api()
     result = api.read_namespaced_service(
@@ -91,7 +100,13 @@ def get_service(*, name, namespace, k8s_client, raw=True):
         return result
 
 
-def get_secret(*, namespace, name, k8s_client, raw=True):
+def get_secret(
+    *,
+    namespace: str,
+    name: str,
+    k8s_client: Any,
+    raw: bool = True,
+) -> dict[str, Any] | Any:
     """Get a Secret resource.
 
     Parameters
@@ -111,10 +126,7 @@ def get_secret(*, namespace, name, k8s_client, raw=True):
     secret
         The Kubernetes Secret resource either as a `dict` or an object.
     """
-    if raw:
-        preload_content = False
-    else:
-        preload_content = True
+    preload_content = not raw
 
     api = k8s_client.CoreV1Api()
     result = api.read_namespaced_secret(
@@ -126,7 +138,13 @@ def get_secret(*, namespace, name, k8s_client, raw=True):
         return result
 
 
-def get_ssr(*, namespace, name, k8s_client, raw=True):
+def get_ssr(
+    *,
+    namespace: str,
+    name: str,
+    k8s_client: Any,
+    raw: bool = True,
+) -> dict[str, Any] | Any:
     """Get a StrimziSchemaRegistry resource.
 
     Parameters
@@ -147,10 +165,7 @@ def get_ssr(*, namespace, name, k8s_client, raw=True):
         The Kubernetes StrimziSchemaRegistry resource either as a `dict` or an
         object.
     """
-    if raw:
-        preload_content = False
-    else:
-        preload_content = True
+    preload_content = not raw
 
     api = k8s_client.CustomObjectsApi()
     result = api.get_namespaced_custom_object(

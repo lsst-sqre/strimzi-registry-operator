@@ -1,0 +1,151 @@
+# Generic shared Ruff configuration file. It should be possible to use this
+# file unmodified in different packages provided that one likes the style that
+# it enforces.
+#
+# This file should be used from pyproject.toml as follows:
+#
+#     [tool.ruff]
+#     extend = "ruff-shared.toml"
+#
+# It can then be extended with project-specific rules. A common additional
+# setting in pyproject.toml is tool.ruff.lint.extend-per-file-ignores, to add
+# additional project-specific ignore rules for specific paths.
+#
+# The rule used with Ruff configuration is to disable every non-deprecated
+# lint rule that has legitimate exceptions that are not dodgy code, rather
+# than cluttering code with noqa markers. This is therefore a reiatively
+# relaxed configuration that errs on the side of disabling legitimate rules.
+#
+# Reference for settings: https://docs.astral.sh/ruff/settings/
+# Reference for rules: https://docs.astral.sh/ruff/rules/
+exclude = ["docs/**"]
+line-length = 79
+target-version = "py312"
+
+[format]
+docstring-code-format = true
+
+[lint]
+ignore = [
+    "A005",     # we always use relative imports so this is not ambiguous
+    "ANN401",   # sometimes Any is the right type
+    "ARG001",   # unused function arguments are often legitimate
+    "ARG002",   # unused method arguments are often legitimate
+    "ARG003",   # unused class method arguments are often legitimate
+    "ARG005",   # unused lambda arguments are often legitimate
+    "ASYNC109", # many async functions use asyncio.timeout internally
+    "BLE001",   # we want to catch and report Exception in background tasks
+    "C414",     # nested sorted is how you sort by multiple keys with reverse
+    "D102",     # sometimes we use docstring inheritence
+    "D104",     # don't see the point of documenting every package
+    "D105",     # our style doesn't require docstrings for magic methods
+    "D106",     # Pydantic uses a nested Config class that doesn't warrant docs
+    "D205",     # our documentation style allows a folded first line
+    "EM101",    # justification (duplicate string in traceback) is silly
+    "EM102",    # justification (duplicate string in traceback) is silly
+    "FBT003",   # positional booleans are normal for Pydantic field defaults
+    "FIX002",   # point of a TODO comment is that we're not ready to fix it
+    "PD011",    # attempts to enforce pandas conventions for all data types
+    "G004",     # forbidding logging f-strings is appealing, but not our style
+    "RET505",   # disagree that omitting else always makes code more readable
+    "PLR0911",  # often many returns is clearer and simpler style
+    "PLR0913",  # factory pattern uses constructors with many arguments
+    "PLR2004",  # too aggressive about magic values
+    "PLW0603",  # yes global is discouraged but if needed, it's needed
+    "S105",     # good idea but too many false positives on non-passwords
+    "S106",     # good idea but too many false positives on non-passwords
+    "S107",     # good idea but too many false positives on non-passwords
+    "S603",     # not going to manually mark every subprocess call as reviewed
+    "S607",     # using PATH is not a security vulnerability
+    "SIM102",   # sometimes the formatting of nested if statements is clearer
+    "SIM117",   # sometimes nested with contexts are clearer
+    "TC001",    # we decided to not maintain separate TYPE_CHECKING blocks
+    "TC002",    # we decided to not maintain separate TYPE_CHECKING blocks
+    "TC003",    # we decided to not maintain separate TYPE_CHECKING blocks
+    "TD003",    # we don't require issues be created for TODOs
+    "TID252",   # if we're going to use relative imports, use them always
+    "TRY003",   # good general advice but lint is way too aggressive
+    "TRY301",   # sometimes raising exceptions inside try is the best flow
+    "UP040",    # PEP 695 type aliases not yet supported by mypy
+
+    # The following settings should be disabled when using ruff format
+    # per https://docs.astral.sh/ruff/formatter/#conflicting-lint-rules
+    "W191",
+    "E111",
+    "E114",
+    "E117",
+    "D206",
+    "D300",
+    "Q000",
+    "Q001",
+    "Q002",
+    "Q003",
+    "COM812",
+    "COM819",
+    "ISC001",
+    "ISC002",
+]
+select = ["ALL"]
+
+[lint.per-file-ignores]
+"alembic/**" = [
+    "INP001",  # Alembic files are magical
+    "D103",    # Alembic methods do not need docstrings
+    "D400",    # Alembic migrations have their own docstring format
+]
+"noxfile.py" = [
+    "T201",    # print makes sense as output from nox rules
+]
+"src/*/handlers/**" = [
+    "D103",    # FastAPI handlers should not have docstrings
+]
+"*/src/*/handlers/**" = [
+    "D103",    # FastAPI handlers should not have docstrings
+]
+"tests/**" = [
+    "C901",    # tests are allowed to be complex, sometimes that's convenient
+    "D101",    # tests don't need docstrings
+    "D103",    # tests don't need docstrings
+    "PLR0915", # tests are allowed to be long, sometimes that's convenient
+    "PT012",   # way too aggressive about limiting pytest.raises blocks
+    "S101",    # tests should use assert
+    "S106",    # tests are allowed to hard-code dummy passwords
+    "S301",    # allow tests for whether code can be pickled
+    "SLF001",  # tests are allowed to access private members
+]
+"*/tests/**" = [
+    "C901",    # tests are allowed to be complex, sometimes that's convenient
+    "D101",    # tests don't need docstrings
+    "D103",    # tests don't need docstrings
+    "PLR0915", # tests are allowed to be long, sometimes that's convenient
+    "PT012",   # way too aggressive about limiting pytest.raises blocks
+    "S101",    # tests should use assert
+    "S106",    # tests are allowed to hard-code dummy passwords
+    "S301",    # allow tests for whether code can be pickled
+    "SLF001",  # tests are allowed to access private members
+]
+"tests/schema_test.py" = [
+    "ASYNC221", # useful to run subprocess in async tests for Alembic
+]
+"*/tests/schema_test.py" = [
+    "ASYNC221", # useful to run subprocess in async tests for Alembic
+]
+
+# These are too useful as attributes or methods to allow the conflict with the
+# built-in to rule out their use.
+[lint.flake8-builtins]
+builtins-ignorelist = [
+    "all",
+    "any",
+    "help",
+    "id",
+    "list",
+    "type",
+]
+
+[lint.flake8-pytest-style]
+fixture-parentheses = false
+mark-parentheses = false
+
+[lint.pydocstyle]
+convention = "numpy"

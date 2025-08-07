@@ -20,5 +20,7 @@ sleep 5s
 
 kubectl apply -f schema-registry.yaml
 sleep 10s # wait for registry-operator to create deployment
+kubectl get deployments -n default
 kubectl wait -n default deployment confluent-schema-registry \
     --for condition=Available=True --timeout=600s
+kubectl logs deploy/strimzi-registry-operator -n default
