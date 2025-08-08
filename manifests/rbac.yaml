@@ -22,8 +22,11 @@ rules:
     verbs: [create]
   # Access to the built-in resources the operator manages
   - apiGroups: [""]
-    resources: [events, namespaces, secrets, configmaps, services]
+    resources: [namespaces, configmaps, services]
     verbs: [get, list, watch, patch, create]
+  - apiGroups: [""]
+    resources: [secrets]
+    verbs: [get, list, watch, patch, create, delete, update]
   - apiGroups: ["apps"]
     resources: ["deployments"]
     verbs: [get, list, watch, patch, create]
