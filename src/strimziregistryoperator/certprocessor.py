@@ -185,10 +185,7 @@ def delete_secret(
         `strimziregistryoperator.k8s.create_k8sclient`).
     """
     v1_api = k8s_client.CoreV1Api()
-    secret = v1_api.read_namespaced_secret(name=name, namespace=namespace)
-    v1_api.delete_namespaced_secret(
-        name=name, namespace=namespace, body=secret
-    )
+    v1_api.delete_namespaced_secret(name=name, namespace=namespace)
 
 
 @lru_cache(maxsize=128)
