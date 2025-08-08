@@ -109,10 +109,8 @@ def parse_registry_spec(
     listener_name = spec.get("listener", "tls")
     if "listener" not in spec:
         logger.warning(
-            "StrimziSchemaRegistry %s is missing a listener name,"
-            "using default %s",
-            name,
-            listener_name,
+            f"StrimziSchemaRegistry {name} is missing a listener name,"
+            f"using {listener_name}."
         )
 
     return {
