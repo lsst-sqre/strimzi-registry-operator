@@ -126,7 +126,7 @@ def parse_registry_spec(
         "registry_mem_limit": get_nullable(spec, "memoryLimit"),
         "registry_mem_request": get_nullable(spec, "memoryRequest"),
         "registry_compatibility_level": spec.get(
-            "compatibilitylevel", "forward"
+            "compatibilityLevel", "forward"
         ),
         "security_protocol": spec.get("securityProtocol", "SSL"),
     }
