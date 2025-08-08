@@ -15,7 +15,7 @@ import kopf
 from .. import state
 from ..certprocessor import create_secret
 from ..deployments import update_deployment
-from ..k8s import create_k8sclient, get_deployment, get_ssr
+from ..k8s import create_k8sclient, get_deployment, get_secret, get_ssr
 
 
 @kopf.on.event("", "v1", "secrets")  # type: ignore[arg-type]
@@ -118,7 +118,15 @@ def refresh_with_new_cluster_ca(
             cluster_ca_secret=cluster_ca_secret,
             logger=logger,
         )
-        secret_version = secret["metadata"]["resourceVersion"]
+
+        secret_name = secret["metadata"]["name"]
+
+        # Get the secret so now it has the resourceVersion metadata
+        secret_version = get_secret(
+            name=secret_name,
+            namespace=namespace,
+            k8s_client=k8s_client,
+        )["metadata"]["resourceVersion"]
 
         deployment = get_deployment(
             name=registry_name,
@@ -178,8 +186,14 @@ def refresh_with_new_client_secret(
         logger=logger,
     )
 
-    # Get the version of the newly created or updated Secret
-    secret_version = secret["metadata"]["resourceVersion"]
+    secret_name = secret["metadata"]["name"]
+
+    # Get the secret so now it has the resourceVersion metadata
+    secret_version = get_secret(
+        name=secret_name,
+        namespace=namespace,
+        k8s_client=k8s_client,
+    )["metadata"]["resourceVersion"]
 
     # Get the Deployment for this KafkaUser
     deployment = get_deployment(
