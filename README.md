@@ -190,8 +190,6 @@ spec:
 - `strimziVersion` is the version of the `kafka.strimzi.io` Custom Resource API to use.
   The correct value depends on the deployed version of Strimzi.
   The current Strimzi API  version is `v1beta2`.
-  Strimzi versions 0.21.0 and earlier support the `v1beta1` API.
-  (A deprecated version of the configuration is `strimzi-version`.)
 
 ### Schema Registry-related configurations
 
