@@ -15,6 +15,7 @@ from typing import Any
 
 import kopf
 import structlog
+from kubernetes.client.exceptions import ApiException
 
 from strimziregistryoperator.k8s import get_secret
 
@@ -73,6 +74,7 @@ def create_secret(
             k8s_client=k8s_client,
         )
         logger.info("Retrieved cluster CA certificate")
+
     cluster_secret_version = cluster_ca_secret["metadata"]["resourceVersion"]
     logger.info(f"Cluster CA certificate version: {cluster_secret_version}")
     cluster_ca_cert = decode_secret_field(cluster_ca_secret["data"]["ca.crt"])
@@ -81,83 +83,87 @@ def create_secret(
         client_secret = get_secret(
             namespace=namespace, name=kafka_username, k8s_client=k8s_client
         )
-        logger.info("Retrieved cluster CA certificate")
+        logger.info("Retrieved KafkaUser client secret.")
+
     client_secret_version = client_secret["metadata"]["resourceVersion"]
-    logger.info(f"Client certification version: {client_secret_version}")
+    logger.info(f"Client secret version: {client_secret_version}")
     client_ca_cert = decode_secret_field(client_secret["data"]["ca.crt"])
     client_cert = decode_secret_field(client_secret["data"]["user.crt"])
     client_key = decode_secret_field(client_secret["data"]["user.key"])
 
     jks_secret_name = f"{kafka_username}-jks"
+
     try:
         jks_secret = get_secret(
             namespace=namespace, name=jks_secret_name, k8s_client=k8s_client
         )
-        logger.info("Got JKS secret")
-
+        annotations = jks_secret["metadata"]["annotations"]
         if (
-            jks_secret["metadata"]["annotations"][ca_version_key]
-            == cluster_secret_version
-            and jks_secret["metadata"]["annotations"][user_version_key]
-            == client_secret_version
+            annotations.get(ca_version_key) == cluster_secret_version
+            and annotations.get(user_version_key) == client_secret_version
         ):
-            # No need to build a new secret
-            logger.info("JKS secret is up-to-date")
+            logger.info("JKS secret is up-to-date.")
             return jks_secret
-    except Exception:
-        # Either the secret doesn't exist yet or it is outdated
-        logger.exception("Couldn't check JKS secret; replacing it.")
-
-    # Try to delete the old secret (if it exists)
-    try:
-        logger.info("About to delete JKS secret")
+        logger.info("JKS secret is outdated. Deleting...")
         delete_secret(
             namespace=namespace, name=jks_secret_name, k8s_client=k8s_client
         )
-        logger.info("Deleted JKS secret")
+    except ApiException as e:
+        if e.status == 404:
+            logger.info("JKS secret does not exist. Will create.")
+        else:
+            logger.exception("Error retrieving JKS secret.")
+            raise
     except Exception:
-        logger.exception("Something failed with deleting JKS secret")
+        logger.exception("Failed to retrieve or delete existing JKS secret.")
+        raise
 
+    # Create new keystore and truststore
     truststore, truststore_password = create_truststore(cluster_ca_cert)
     keystore, keystore_password = create_keystore(
         client_ca_cert, client_cert, client_key
     )
 
-    # Build a new JKS-formatted secret
-    api_instance = k8s_client.CoreV1Api()
-    secret = k8s_client.V1Secret()
-    secret.metadata = k8s_client.V1ObjectMeta(name=jks_secret_name)
-    secret.metadata.annotations = {
-        ca_version_key: cluster_secret_version,
-        user_version_key: client_secret_version,
-    }
-    secret.type = "Opaque"
-    secret.data = {
-        "truststore.jks": base64.b64encode(truststore).decode("utf-8"),
-        "keystore.jks": base64.b64encode(keystore).decode("utf-8"),
-        "truststore_password": base64.b64encode(
-            truststore_password.encode("utf-8")
-        ).decode("utf-8"),
-        "keystore_password": base64.b64encode(
-            keystore_password.encode("utf-8")
-        ).decode("utf-8"),
+    secret_data = {
+        "truststore.jks": b64(truststore),
+        "keystore.jks": b64(keystore),
+        "truststore_password": b64(truststore_password),
+        "keystore_password": b64(keystore_password),
     }
 
-    # Set the owner on the secret. kopf.adopt only works on dicts
-    secret_body = api_instance.api_client.sanitize_for_serialization(secret)
+    metadata = k8s_client.V1ObjectMeta(
+        name=jks_secret_name,
+        annotations={
+            ca_version_key: cluster_secret_version,
+            user_version_key: client_secret_version,
+        },
+    )
+
+    secret = k8s_client.V1Secret(
+        metadata=metadata, type="Opaque", data=secret_data
+    )
+
+    secret_body = k8s_client.CoreV1Api().api_client.sanitize_for_serialization(
+        secret
+    )
+
     kopf.adopt(secret_body, owner=owner)
-
-    api_instance.create_namespaced_secret(
+    k8s_client.CoreV1Api().create_namespaced_secret(
         namespace=namespace, body=secret_body
     )
 
     logger.info("Created new JKS secret")
-
-    return api_instance.api_client.sanitize_for_serialization(secret)
+    return secret_body
 
 
 def decode_secret_field(value: str) -> str:
     return base64.b64decode(value).decode("utf-8")
+
+
+def b64(data: bytes | str) -> str:
+    if isinstance(data, str):
+        data = data.encode("utf-8")
+    return base64.b64encode(data).decode("utf-8")
 
 
 def delete_secret(
