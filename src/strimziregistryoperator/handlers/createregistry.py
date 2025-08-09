@@ -99,30 +99,18 @@ def parse_registry_spec(
     dict
         A dictionary containing the configuration for the Schema Registry.
     """
-    strimzi_api_version = spec.get("strimziVersion") or spec.get(
-        "strimzi-version"
-    )
-    if not strimzi_api_version:
-        strimzi_api_version = "v1beta2"
+    strimzi_api_version = spec.get("strimziVersion", "v1beta2")
+    if "strimziVersion" not in spec:
         logger.warning(
-            "StrimziSchemaRegistry %s is missing a strimziVersion,"
-            "using default %s",
-            name,
-            strimzi_api_version,
-        )
-    elif "strimzi-version" in spec:
-        logger.warning(
-            "The strimzi-version configuration is deprecated."
-            "Use strimziVersion instead."
+            f"StrimziSchemaRegistry {name} is missing a strimziVersion,"
+            f"using  {strimzi_api_version}."
         )
 
     listener_name = spec.get("listener", "tls")
     if "listener" not in spec:
         logger.warning(
-            "StrimziSchemaRegistry %s is missing a listener name,"
-            "using default %s",
-            name,
-            listener_name,
+            f"StrimziSchemaRegistry {name} is missing a listener name,"
+            f"using {listener_name}."
         )
 
     return {
@@ -132,13 +120,13 @@ def parse_registry_spec(
         "registry_image": spec.get(
             "registryImage", "confluentinc/cp-schema-registry"
         ),
-        "registry_image_tag": spec.get("registryImageTag", "7.2.1"),
+        "registry_image_tag": spec.get("registryImageTag", "8.2.0"),
         "registry_cpu_limit": get_nullable(spec, "cpuLimit"),
         "registry_cpu_request": get_nullable(spec, "cpuRequest"),
         "registry_mem_limit": get_nullable(spec, "memoryLimit"),
         "registry_mem_request": get_nullable(spec, "memoryRequest"),
         "registry_compatibility_level": spec.get(
-            "compatibilitylevel", "forward"
+            "compatibilityLevel", "forward"
         ),
         "security_protocol": spec.get("securityProtocol", "SSL"),
     }
