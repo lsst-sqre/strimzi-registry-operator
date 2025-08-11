@@ -188,6 +188,7 @@ def test_create_deployment_configurations() -> None:
         secret_version="1",
         registry_image=registry_image,
         registry_image_tag=registry_image_tag,
+        registry_replicas=3,
         registry_cpu_limit=None,
         registry_mem_limit=None,
         registry_cpu_request=None,
@@ -211,6 +212,8 @@ def test_create_deployment_configurations() -> None:
 
     assert "resources" in dep_body["spec"]["template"]["spec"]["containers"][0]
 
+    assert dep_body["spec"]["replicas"] == 3
+
 
 def test_create_deployment_resource_settings() -> None:
     """Create a schema registry deployment body with a customized image."""
@@ -224,6 +227,7 @@ def test_create_deployment_resource_settings() -> None:
         secret_version="1",
         registry_image=registry_image,
         registry_image_tag=registry_image_tag,
+        registry_replicas=3,
         registry_cpu_limit="1000m",
         registry_mem_limit="1000M",
         registry_cpu_request="100m",

@@ -132,6 +132,7 @@ def create_deployment(
     secret_version: str,
     registry_image: str,
     registry_image_tag: str,
+    registry_replicas: int,
     registry_cpu_limit: str | None,
     registry_cpu_request: str | None,
     registry_mem_limit: str | None,
@@ -160,6 +161,8 @@ def create_deployment(
         The Schema Registry docker image.
     registry_image_tag : `str`
         The tag for the Schema Registry docker image.
+    registry_replicas : `int`
+        The number of replicas for the Schema Registry deployment.
     registry_cpu_limit : `str` or `None`
         Requested CPU limit for the registry container. `None` omits the
         setting from the container spec.
@@ -229,7 +232,7 @@ def create_deployment(
             },
         },
         "spec": {
-            "replicas": 1,
+            "replicas": registry_replicas,
             "selector": {"matchLabels": {"app": name}},
             "template": template,
         },

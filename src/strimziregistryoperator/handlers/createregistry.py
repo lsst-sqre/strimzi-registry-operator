@@ -121,6 +121,7 @@ def parse_registry_spec(
             "registryImage", "confluentinc/cp-schema-registry"
         ),
         "registry_image_tag": spec.get("registryImageTag", "7.2.1"),
+        "registry_replicas": spec.get("replicas", 1),
         "registry_cpu_limit": get_nullable(spec, "cpuLimit"),
         "registry_cpu_request": get_nullable(spec, "cpuRequest"),
         "registry_mem_limit": get_nullable(spec, "memoryLimit"),
@@ -242,6 +243,7 @@ def create_registry_resources(
             secret_version=secret_version,
             registry_image=config["registry_image"],
             registry_image_tag=config["registry_image_tag"],
+            registry_replicas=config["registry_replicas"],
             registry_cpu_limit=config["registry_cpu_limit"],
             registry_cpu_request=config["registry_cpu_request"],
             registry_mem_limit=config["registry_mem_limit"],
