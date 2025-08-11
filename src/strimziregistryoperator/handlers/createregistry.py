@@ -120,7 +120,7 @@ def parse_registry_spec(
         "registry_image": spec.get(
             "registryImage", "confluentinc/cp-schema-registry"
         ),
-        "registry_image_tag": spec.get("registryImageTag", "7.2.1"),
+        "registry_image_tag": spec.get("registryImageTag", "8.0.0"),
         "registry_replicas": spec.get("replicas", 1),
         "registry_cpu_limit": get_nullable(spec, "cpuLimit"),
         "registry_cpu_request": get_nullable(spec, "cpuRequest"),
