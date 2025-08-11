@@ -51,6 +51,12 @@ spec:
                     The Docker image tag for the Confluent Schema Registry.
                     Use this property to control the version of the deployed
                     schema registry.
+                replicas:
+                  type: integer
+                  default: 1
+                  description: >-
+                    The number of Schema Registry replicas to deploy. Default
+                    is 1.
                 cpuLimit:
                   type: string
                   default: ""
