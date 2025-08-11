@@ -172,7 +172,7 @@ def get_ssr(
         group="roundtable.lsst.codes",
         version="v1beta1",
         namespace=namespace,
-        plural="ssrs",
+        plural="strimzischemaregistries",
         name=name,
         _preload_content=preload_content,
     )
