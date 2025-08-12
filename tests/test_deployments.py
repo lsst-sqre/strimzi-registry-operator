@@ -195,6 +195,7 @@ def test_create_deployment_configurations() -> None:
         registry_mem_request=None,
         compatibility_level="backward",
         security_protocol="SSL",
+        registry_topic="custom-topic",
     )
     assert dep_body["spec"]["template"]["spec"]["containers"][0]["image"] == (
         f"{registry_image}:{registry_image_tag}"
@@ -208,6 +209,11 @@ def test_create_deployment_configurations() -> None:
     assert (
         get_env_value(env, "SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL")
         == "SSL"
+    )
+
+    assert (
+        get_env_value(env, "SCHEMA_REGISTRY_KAFKASTORE_TOPIC")
+        == "custom-topic"
     )
 
     assert "resources" in dep_body["spec"]["template"]["spec"]["containers"][0]
@@ -234,6 +240,7 @@ def test_create_deployment_resource_settings() -> None:
         registry_mem_request="768M",
         compatibility_level="forward",
         security_protocol="SSL",
+        registry_topic="custom-topic",
     )
     resources = dep_body["spec"]["template"]["spec"]["containers"][0][
         "resources"
