@@ -7,6 +7,7 @@ import yaml
 from strimziregistryoperator.deployments import (
     create_deployment,
     create_service,
+    get_cluster_name,
     get_kafka_bootstrap_server,
 )
 
@@ -188,12 +189,14 @@ def test_create_deployment_configurations() -> None:
         secret_version="1",
         registry_image=registry_image,
         registry_image_tag=registry_image_tag,
+        registry_replicas=3,
         registry_cpu_limit=None,
         registry_mem_limit=None,
         registry_cpu_request=None,
         registry_mem_request=None,
         compatibility_level="backward",
         security_protocol="SSL",
+        registry_topic="custom-topic",
     )
     assert dep_body["spec"]["template"]["spec"]["containers"][0]["image"] == (
         f"{registry_image}:{registry_image_tag}"
@@ -209,7 +212,14 @@ def test_create_deployment_configurations() -> None:
         == "SSL"
     )
 
+    assert (
+        get_env_value(env, "SCHEMA_REGISTRY_KAFKASTORE_TOPIC")
+        == "custom-topic"
+    )
+
     assert "resources" in dep_body["spec"]["template"]["spec"]["containers"][0]
+
+    assert dep_body["spec"]["replicas"] == 3
 
 
 def test_create_deployment_resource_settings() -> None:
@@ -224,12 +234,14 @@ def test_create_deployment_resource_settings() -> None:
         secret_version="1",
         registry_image=registry_image,
         registry_image_tag=registry_image_tag,
+        registry_replicas=3,
         registry_cpu_limit="1000m",
         registry_mem_limit="1000M",
         registry_cpu_request="100m",
         registry_mem_request="768M",
         compatibility_level="forward",
         security_protocol="SSL",
+        registry_topic="custom-topic",
     )
     resources = dep_body["spec"]["template"]["spec"]["containers"][0][
         "resources"
@@ -238,3 +250,27 @@ def test_create_deployment_resource_settings() -> None:
     assert resources["limits"]["memory"] == "1000M"
     assert resources["requests"]["cpu"] == "100m"
     assert resources["requests"]["memory"] == "768M"
+
+
+def test_get_cluster_name() -> None:
+    # label is present
+    body_with_label = {
+        "metadata": {"labels": {"strimzi.io/cluster": "events"}},
+        "spec": {"listener": "tls"},
+    }
+    assert get_cluster_name(body_with_label) == "events"
+
+    # missing label value
+    body_missing_label = {
+        "metadata": {"labels": {}},
+        "spec": {"listener": "tls"},
+    }
+    assert get_cluster_name(body_missing_label) is None
+
+    # missing labels key
+    body_no_labels = {"metadata": {}, "spec": {"listener": "tls"}}
+    assert get_cluster_name(body_no_labels) is None
+
+    # missing metadata key
+    body_no_metadata = {"spec": {"listener": "tls"}}
+    assert get_cluster_name(body_no_metadata) is None
