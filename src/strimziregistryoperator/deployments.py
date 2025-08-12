@@ -7,7 +7,12 @@ from typing import Any
 
 import kopf
 
-__all__ = ["create_deployment", "create_service", "get_kafka_bootstrap_server"]
+__all__ = (
+    "create_deployment",
+    "create_service",
+    "get_cluster_name",
+    "get_kafka_bootstrap_server",
+)
 
 
 def get_kafka_bootstrap_server(
@@ -133,13 +138,13 @@ def create_deployment(
     registry_image: str,
     registry_image_tag: str,
     registry_replicas: int,
-    registry_topic: str,
     registry_cpu_limit: str | None,
     registry_cpu_request: str | None,
     registry_mem_limit: str | None,
     registry_mem_request: str | None,
     compatibility_level: str,
     security_protocol: str,
+    registry_topic: str,
 ) -> dict[str, Any]:
     """Create the JSON resource for a Deployment of the Confluence Schema
     Registry.
@@ -164,9 +169,6 @@ def create_deployment(
         The tag for the Schema Registry docker image.
     registry_replicas : `int`
         The number of replicas for the Schema Registry deployment.
-    registry_topic : `str`
-        The name of the Kafka topic used by the Schema Registry to store
-        schemas.
     registry_cpu_limit : `str` or `None`
         Requested CPU limit for the registry container. `None` omits the
         setting from the container spec.
@@ -186,6 +188,9 @@ def create_deployment(
     security_protocol : `str`
         The Kafka store security policy. Can be SSL, PLAINTEXT, SASL_PLAINTEXT,
         or SASL_SSL.
+    registry_topic : `str`
+        The name of the Kafka topic used by the Schema Registry to store
+        schemas.
 
     Returns
     -------
@@ -459,3 +464,23 @@ def update_deployment(
     apps_api.patch_namespaced_deployment(
         name=name, namespace=namespace, body=deployment
     )
+
+
+def get_cluster_name(body: dict) -> str | None:
+    """Get the Strimzi cluster name from the metadata labels.
+
+    Parameters
+    ----------
+    body : dict
+        The full body of the StrimziSchemaRegistry resource.
+
+    Returns
+    -------
+    str | None
+        The name of the Strimzi cluster, or None if not found.
+    """
+    # Extract the cluster name from the metadata labels
+    if "metadata" not in body or "labels" not in body["metadata"]:
+        return None
+
+    return body.get("metadata", {}).get("labels", {}).get("strimzi.io/cluster")

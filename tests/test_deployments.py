@@ -7,6 +7,7 @@ import yaml
 from strimziregistryoperator.deployments import (
     create_deployment,
     create_service,
+    get_cluster_name,
     get_kafka_bootstrap_server,
 )
 
@@ -249,3 +250,27 @@ def test_create_deployment_resource_settings() -> None:
     assert resources["limits"]["memory"] == "1000M"
     assert resources["requests"]["cpu"] == "100m"
     assert resources["requests"]["memory"] == "768M"
+
+
+def test_get_cluster_name() -> None:
+    # label is present
+    body_with_label = {
+        "metadata": {"labels": {"strimzi.io/cluster": "events"}},
+        "spec": {"listener": "tls"},
+    }
+    assert get_cluster_name(body_with_label) == "events"
+
+    # missing label value
+    body_missing_label = {
+        "metadata": {"labels": {}},
+        "spec": {"listener": "tls"},
+    }
+    assert get_cluster_name(body_missing_label) is None
+
+    # missing labels key
+    body_no_labels = {"metadata": {}, "spec": {"listener": "tls"}}
+    assert get_cluster_name(body_no_labels) is None
+
+    # missing metadata key
+    body_no_metadata = {"spec": {"listener": "tls"}}
+    assert get_cluster_name(body_no_metadata) is None
