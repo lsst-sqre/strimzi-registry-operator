@@ -16,6 +16,7 @@ from strimziregistryoperator.certprocessor import create_secret
 from strimziregistryoperator.deployments import (
     create_deployment,
     create_service,
+    get_cluster_name,
     get_kafka_bootstrap_server,
 )
 from strimziregistryoperator.k8s import (
@@ -189,17 +190,13 @@ def create_registry_resources(
     k8s_core_v1_api = k8s_client.CoreV1Api()
     k8s_cr_api = k8s_client.CustomObjectsApi()
 
-    # Get the name of the Kafka cluster associated with the
-    # StrimziSchemaRegistry's associated strimzi KafkaUser resource.
-    # The StrimziSchemaRegistry and its KafkaUser have the same name.
-    kafkauser = k8s_cr_api.get_namespaced_custom_object(
-        group="kafka.strimzi.io",
-        version=strimzi_api_version,
-        namespace=namespace,
-        plural="kafkausers",
-        name=name,
-    )
-    cluster_name = kafkauser["metadata"]["labels"]["strimzi.io/cluster"]
+    cluster_name = get_cluster_name(body)
+
+    if not cluster_name:
+        raise kopf.PermanentError(
+            "Missing required label strimzi.io/cluster on "
+            "StrimziSchemaRegistry."
+        )
 
     # Get the Kafka bootstrap server corresponding to the configured
     # Kafka listener name.
