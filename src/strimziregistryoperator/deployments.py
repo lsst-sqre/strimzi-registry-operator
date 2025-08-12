@@ -133,6 +133,7 @@ def create_deployment(
     registry_image: str,
     registry_image_tag: str,
     registry_replicas: int,
+    registry_topic: str,
     registry_cpu_limit: str | None,
     registry_cpu_request: str | None,
     registry_mem_limit: str | None,
@@ -163,6 +164,9 @@ def create_deployment(
         The tag for the Schema Registry docker image.
     registry_replicas : `int`
         The number of replicas for the Schema Registry deployment.
+    registry_topic : `str`
+        The name of the Kafka topic used by the Schema Registry to store
+        schemas.
     registry_cpu_limit : `str` or `None`
         Requested CPU limit for the registry container. `None` omits the
         setting from the container spec.
@@ -201,6 +205,7 @@ def create_deployment(
         registry_mem_request=registry_mem_request,
         compatibility_level=compatibility_level,
         security_protocol=security_protocol,
+        registry_topic=registry_topic,
     )
 
     # The pod template
@@ -251,6 +256,7 @@ def create_container_spec(
     registry_mem_request: str | None,
     compatibility_level: str,
     security_protocol: str,
+    registry_topic: str,
 ) -> dict[str, Any]:
     """Create the container spec for the Schema Registry deployment.
 
@@ -285,6 +291,9 @@ def create_container_spec(
     security_protocol : `str`
         The Kafka store security policy. Can be SSL, PLAINTEXT, SASL_PLAINTEXT,
         or SASL_SSL.
+    registry_topic : `str`
+        The name of the Kafka topic used by the Schema Registry to store
+        schemas.
     """
     registry_env = [
         {
@@ -307,7 +316,7 @@ def create_container_spec(
         },
         {
             "name": "SCHEMA_REGISTRY_KAFKASTORE_TOPIC",
-            "value": "registry-schemas",
+            "value": registry_topic,
         },
         {
             "name": "SCHEMA_REGISTRY_KAFKASTORE_SSL_KEYSTORE_LOCATION",

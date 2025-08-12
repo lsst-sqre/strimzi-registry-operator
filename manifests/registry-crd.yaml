@@ -51,6 +51,12 @@ spec:
                     The Docker image tag for the Confluent Schema Registry.
                     Use this property to control the version of the deployed
                     schema registry.
+                registryTopic:
+                  type: string
+                  default: "registry-schemas"
+                  description: >-
+                    The name of the Kafka topic used by the Schema Registry to store
+                    schemas. Default is `registry-schemas`.
                 replicas:
                   type: integer
                   default: 1

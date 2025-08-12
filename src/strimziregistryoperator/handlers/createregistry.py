@@ -130,6 +130,7 @@ def parse_registry_spec(
             "compatibilityLevel", "forward"
         ),
         "security_protocol": spec.get("securityProtocol", "SSL"),
+        "registry_topic": spec.get("registryTopic", "registry-schemas"),
     }
 
 
@@ -250,6 +251,7 @@ def create_registry_resources(
             registry_mem_request=config["registry_mem_request"],
             compatibility_level=config["registry_compatibility_level"],
             security_protocol=config["security_protocol"],
+            registry_topic=config["registry_topic"],
         )
         # Set the StrimziSchemaRegistry as the owner
         kopf.adopt(dep_body, owner=cast("kopf.Body", body))
