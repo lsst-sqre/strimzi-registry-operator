@@ -404,7 +404,7 @@ def create_container_spec(
 
 
 def create_service(
-    *, name: str, service_type: str = "ClusterIp"
+    *, name: str, service_type: str = "ClusterIP"
 ) -> dict[str, Any]:
     """Create a Service resource for the Schema Registry.
 
