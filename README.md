@@ -156,6 +156,20 @@ spec:
         type: allow
 ```
 
+> **Note**
+> Since the `KafkaUser` is configured with `authorization.type: simple` make sure your kafka cluster has this option enabled.
+> ```yaml
+> apiVersion: kafka.strimzi.io/v1beta2
+> kind: Kafka
+> metadata:
+>   name: events
+> spec:
+>   kafka:
+>     # ...
+>     authorization:
+>       type: simple
+> ```
+
 ### Step 3. Deploy the StrimziSchemaRegistry
 
 Now that there is a topic and a user, you can deploy the Schema Registry itself.
