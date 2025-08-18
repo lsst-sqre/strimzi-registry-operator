@@ -16,6 +16,7 @@ from strimziregistryoperator.certprocessor import create_secret
 from strimziregistryoperator.deployments import (
     create_deployment,
     create_service,
+    get_cluster_name,
     get_kafka_bootstrap_server,
 )
 from strimziregistryoperator.k8s import (
@@ -99,30 +100,18 @@ def parse_registry_spec(
     dict
         A dictionary containing the configuration for the Schema Registry.
     """
-    strimzi_api_version = spec.get("strimziVersion") or spec.get(
-        "strimzi-version"
-    )
-    if not strimzi_api_version:
-        strimzi_api_version = "v1beta2"
+    strimzi_api_version = spec.get("strimziVersion", "v1beta2")
+    if "strimziVersion" not in spec:
         logger.warning(
-            "StrimziSchemaRegistry %s is missing a strimziVersion,"
-            "using default %s",
-            name,
-            strimzi_api_version,
-        )
-    elif "strimzi-version" in spec:
-        logger.warning(
-            "The strimzi-version configuration is deprecated."
-            "Use strimziVersion instead."
+            f"StrimziSchemaRegistry {name} is missing a strimziVersion, "
+            f"using  {strimzi_api_version}."
         )
 
     listener_name = spec.get("listener", "tls")
     if "listener" not in spec:
         logger.warning(
-            "StrimziSchemaRegistry %s is missing a listener name,"
-            "using default %s",
-            name,
-            listener_name,
+            f"StrimziSchemaRegistry {name} is missing a listener name, "
+            f"using {listener_name}."
         )
 
     return {
@@ -132,15 +121,17 @@ def parse_registry_spec(
         "registry_image": spec.get(
             "registryImage", "confluentinc/cp-schema-registry"
         ),
-        "registry_image_tag": spec.get("registryImageTag", "7.2.1"),
+        "registry_image_tag": spec.get("registryImageTag", "8.0.0"),
+        "registry_replicas": spec.get("replicas", 1),
         "registry_cpu_limit": get_nullable(spec, "cpuLimit"),
         "registry_cpu_request": get_nullable(spec, "cpuRequest"),
         "registry_mem_limit": get_nullable(spec, "memoryLimit"),
         "registry_mem_request": get_nullable(spec, "memoryRequest"),
         "registry_compatibility_level": spec.get(
-            "compatibilitylevel", "forward"
+            "compatibilityLevel", "forward"
         ),
         "security_protocol": spec.get("securityProtocol", "SSL"),
+        "registry_topic": spec.get("registryTopic", "registry-schemas"),
     }
 
 
@@ -199,17 +190,13 @@ def create_registry_resources(
     k8s_core_v1_api = k8s_client.CoreV1Api()
     k8s_cr_api = k8s_client.CustomObjectsApi()
 
-    # Get the name of the Kafka cluster associated with the
-    # StrimziSchemaRegistry's associated strimzi KafkaUser resource.
-    # The StrimziSchemaRegistry and its KafkaUser have the same name.
-    kafkauser = k8s_cr_api.get_namespaced_custom_object(
-        group="kafka.strimzi.io",
-        version=strimzi_api_version,
-        namespace=namespace,
-        plural="kafkausers",
-        name=name,
-    )
-    cluster_name = kafkauser["metadata"]["labels"]["strimzi.io/cluster"]
+    cluster_name = get_cluster_name(body)
+
+    if not cluster_name:
+        raise kopf.PermanentError(
+            "Missing required label strimzi.io/cluster on "
+            "StrimziSchemaRegistry."
+        )
 
     # Get the Kafka bootstrap server corresponding to the configured
     # Kafka listener name.
@@ -254,12 +241,14 @@ def create_registry_resources(
             secret_version=secret_version,
             registry_image=config["registry_image"],
             registry_image_tag=config["registry_image_tag"],
+            registry_replicas=config["registry_replicas"],
             registry_cpu_limit=config["registry_cpu_limit"],
             registry_cpu_request=config["registry_cpu_request"],
             registry_mem_limit=config["registry_mem_limit"],
             registry_mem_request=config["registry_mem_request"],
             compatibility_level=config["registry_compatibility_level"],
             security_protocol=config["security_protocol"],
+            registry_topic=config["registry_topic"],
         )
         # Set the StrimziSchemaRegistry as the owner
         kopf.adopt(dep_body, owner=cast("kopf.Body", body))

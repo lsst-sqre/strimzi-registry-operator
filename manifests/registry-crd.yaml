@@ -27,11 +27,6 @@ spec:
                   description: >-
                     The version of the Strimzi Custom Resource API to use. The
                     correct value depends on the deployed version of Strimzi.
-                strimzi-version:
-                  type: string
-                  default: "v1beta2"
-                  description: >-
-                    Deprecated. Use strimziVersion instead.
                 listener:
                   type: string
                   default: "tls"
@@ -51,11 +46,23 @@ spec:
                     The Docker image for the Confluent Schema Registry.
                 registryImageTag:
                   type: string
-                  default: "7.2.1"
+                  default: "8.0.0"
                   description: >-
                     The Docker image tag for the Confluent Schema Registry.
                     Use this property to control the version of the deployed
                     schema registry.
+                registryTopic:
+                  type: string
+                  default: "registry-schemas"
+                  description: >-
+                    The name of the Kafka topic used by the Schema Registry to store
+                    schemas. Default is `registry-schemas`.
+                replicas:
+                  type: integer
+                  default: 1
+                  description: >-
+                    The number of Schema Registry replicas to deploy. Default
+                    is 1.
                 cpuLimit:
                   type: string
                   default: ""

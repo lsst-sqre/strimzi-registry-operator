@@ -2,6 +2,8 @@ apiVersion: roundtable.lsst.codes/v1beta1
 kind: StrimziSchemaRegistry
 metadata:
   name: confluent-schema-registry
+  labels:
+    strimzi.io/cluster: test-cluster
 spec:
   strimziVersion: v1beta2
   listener: tls

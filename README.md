@@ -79,7 +79,7 @@ spec:
 
 ### Step 1. Deploy a KafkaTopic
 
-Deploy a `KafkaTopic` that the Schema Registry will use as its primary storage.
+Create a `KafkaTopic` resource for the Schema Registry's primary storage.
 
 ```yaml
 apiVersion: kafka.strimzi.io/v1beta2
@@ -89,16 +89,26 @@ metadata:
   labels:
     strimzi.io/cluster: events
 spec:
+  # Actual Kafka topic name will match `metadata.name` unless `spec.topicName` is set.
   partitions: 1
   replicas: 3
   config:
-    # http://kafka.apache.org/documentation/#topicconfigs
+    # Schema Registry requires log compaction to ensure that the the latest version of each schema is always retained
     cleanup.policy: compact
 ```
 
-> **Note**
-> The name `registry-schemas` is currently required.
-> The default name, `_schemas` isn't used because it isn't convenient to create with `KafkaTopic` resources.
+> **Notes**
+>
+>The name `registry-schemas` is used here instead of the Confluent default `_schemas` because underscores (_) are not valid in Kubernetes resource names, and thus cannot be used in `metadata.name`.
+>If you want to keep the actual Kafka topic name as `_schemas`, you can set:
+>```yaml
+>spec:
+>  topicName: _schemas
+>```
+>while keeping a Kubernetes-safe `metadata.name`.
+>
+>You can configure a different Schema Registry topic name in the `StrimziSchemaRegistry` resource via its configuration properties.
+>Stick to lowercase, alphanumeric, and hyphen (-) characters in `metadata.name` for maximum compatibility.
 
 ### Step 2. Deploy a KafkaUser
 
@@ -156,6 +166,8 @@ apiVersion: roundtable.lsst.codes/v1beta1
 kind: StrimziSchemaRegistry
 metadata:
   name: confluent-schema-registry
+  labels:
+    strimzi.io/cluster: events
 spec:
   strimziVersion: v1beta2
   listener: tls
@@ -172,13 +184,17 @@ apiVersion: roundtable.lsst.codes/v1beta1
 kind: StrimziSchemaRegistry
 metadata:
   name: confluent-schema-registry
+  labels:
+    strimzi.io/cluster: events
 spec:
   strimziVersion: v1beta2
   listener: tls
   securityProtocol: tls
   compatibilityLevel: forward
+  registryTopic: "registry-schemas"
   registryImage: confluentinc/cp-schema-registry
-  registryImageTag: "7.2.1"
+  registryImageTag: "8.0.0"
+  replicas: 1
   cpuLimit: ""
   cpuRequest: ""
   memoryLimit: ""
@@ -190,8 +206,6 @@ spec:
 - `strimziVersion` is the version of the `kafka.strimzi.io` Custom Resource API to use.
   The correct value depends on the deployed version of Strimzi.
   The current Strimzi API  version is `v1beta2`.
-  Strimzi versions 0.21.0 and earlier support the `v1beta1` API.
-  (A deprecated version of the configuration is `strimzi-version`.)
 
 ### Schema Registry-related configurations
 
@@ -221,6 +235,11 @@ spec:
 
   See also: Schema Registry [schema.compatibility.level](https://docs.confluent.io/platform/current/schema-registry/installation/config.html#schema-compatibility-level) docs.
 
+- `registryTopic` is the name of the Kafka topic used by the Schema Registry to store schemas.
+  Default is `registry-schemas`.
+
+  See also the notes in the **Deploy a KafkaTopic** section above.
+
 ### Kubernetes configurations for the Schema Registry
 
 - `registryImage` is the name of the Confluent Schema Registry Docker image (without the tag).
@@ -228,7 +247,10 @@ spec:
 
 - `registryImageTag` is the name of the Schema Registry Docker image's tag.
   Use this property to change the version of the Confluent Schema Registry that you're deploying through the `StrimziSchemaRegistry`.
-  Default is `7.2.1`.
+  Default is `8.0.0`.
+
+- `replicas` is the number of replicas for the Schema Registry deployment.
+  Default is 1.
 
 - `cpuLimit` is the cap on CPU usage for the Schema Registry container. Default is to leave unset. Example `1000m` limits to 1 CPU.
 
