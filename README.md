@@ -156,6 +156,20 @@ spec:
         type: allow
 ```
 
+> **Note**
+> Since the `KafkaUser` is configured with `authorization.type: simple` make sure your kafka cluster has this option enabled.
+> ```yaml
+> apiVersion: kafka.strimzi.io/v1beta2
+> kind: Kafka
+> metadata:
+>   name: events
+> spec:
+>   kafka:
+>     # ...
+>     authorization:
+>       type: simple
+> ```
+
 ### Step 3. Deploy the StrimziSchemaRegistry
 
 Now that there is a topic and a user, you can deploy the Schema Registry itself.
@@ -173,7 +187,24 @@ spec:
   listener: tls
 ```
 
-[The next section](#strimzischemaregistry-configuration-properties) describes the configuration properties for the `StrimziSchemaRegistry`.
+The section [StrimziSchemaRegistry configuration properties](#strimzischemaregistry-configuration-properties) describes the configuration properties for the `StrimziSchemaRegistry`.
+
+## Access the Schema Registry API
+
+By default, the operator creates a Kubernetes Service of type `ClusterIP` named after your `StrimziSchemaRegistry` resource. The Service exposes the Schema Registry HTTP API on port 8081 and is reachable from inside the cluster.
+
+For the `StrimziSchemaRegistry` resource configured in step 3 above, the URL to access the Schema Registry API will be `http://confluent-schema-registry.events.svc.cluster.local:8081`.
+
+You can check the deployment by hitting the API from a Pod in the same cluster/namespace:
+
+```bash
+kubectl -n events run -it --rm curl --image=curlimages/curl --restart=Never -- \
+  curl -s http://confluent-schema-registry.events.svc.cluster.local:8081/subjects
+```
+
+If you prefer a node-level endpoint, the operator can create a `NodePort` Service (see the `serviceType` configuration property).
+Enabling `NodePort` depends on your cluster policies.
+In production, keep the default `ClusterIP` and use an ingress in front of it for external access.
 
 ## StrimziSchemaRegistry configuration properties
 
@@ -195,6 +226,7 @@ spec:
   registryImage: confluentinc/cp-schema-registry
   registryImageTag: "8.0.0"
   replicas: 1
+  serviceType: ClusterIP
   cpuLimit: ""
   cpuRequest: ""
   memoryLimit: ""
@@ -251,6 +283,8 @@ spec:
 
 - `replicas` is the number of replicas for the Schema Registry deployment.
   Default is 1.
+
+- `serviceType` is the type of service to create for the registry. Default is ClusterIP. Can be NodePort to publish the registry externally.
 
 - `cpuLimit` is the cap on CPU usage for the Schema Registry container. Default is to leave unset. Example `1000m` limits to 1 CPU.
 
