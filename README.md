@@ -23,10 +23,22 @@ A Helm chart is available for strimzi-registry-operator on GitHub at [lsst-sqre/
 ```sh
 helm repo add lsstsqre https://lsst-sqre.github.io/charts/
 helm repo update
-helm install lsstsqre/strimzi-registry-operator --name ssr --set clusterNamespace="...",clusterName="..."
+helm install strimzi-registry-operator lsstsqre/strimzi-registry-operator \
+  --create-namespace \
+  --namespace strimzi-registry-operator \
+  --set clusterName=events \
+  --set clusterNamespace=events \
 ```
 
-[See the Helm chart's README](https://github.com/lsst-sqre/charts/tree/master/charts/strimzi-registry-operator) for important values to set, including the names of the Strimzi Kafka cluster and namespace for `KafkaUser` resources to watch.
+In this example, the operator is deployed in the `strimzi-registry-operator` namespace.
+
+The following values are configured:
+
+- `clusterName`: Name of the Strimzi Kafka cluster the registry connects to.
+- `clusterNamespace`: Namespace where the Strimzi Kafka cluster is deployed.
+  The operator watches this namespace for the `StrimziSchemaRegistry`, `KafkaUser` and `KafkaTopic` resources.
+
+[See the Helm chart's README](https://github.com/lsst-sqre/charts/blob/master/charts/strimzi-registry-operator/README.md).
 
 ### With Kustomize
 
@@ -38,7 +50,14 @@ kustomize build manifests > manifest.yaml
 kubectl apply -f manifest.yaml
 ```
 
-To configure the name of the Strimzi cluster and the namespace where `KafkaUser` resources are available, you'll need to create your own Kustomize overlay.
+The `strimzi-registry-operator` expects environment variables to be configured at deployment time to determine which Kafka cluster and namespace it should watch.
+The patch file allows you to set these values without modifying the original manifests.
+
+```txt
+overlay/
+├── kustomization.yaml
+└── strimzi-registry-operator-deployment.yaml
+```
 
 A basic ``kustomization.yaml`` file is:
 
@@ -47,7 +66,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - github.com/lsst-sqre/strimzi-registry-operator.git//manifests?ref=0.5.0
+  - github.com/lsst-sqre/strimzi-registry-operator.git//manifests?ref=0.6.0
 
 patches:
   - strimzi-registry-operator-deployment.yaml
@@ -73,9 +92,11 @@ spec:
 ```
 
 - `SSR_CLUSTER_NAME` is the name of the Strimzi Kafka cluster.
-- `SSR_NAMESPACE` is the namespace where the Strimzi Kafka cluster is deployed and where `KafkaUser` resources are found.
+- `SSR_NAMESPACE` is the namespace where the Strimzi Kafka cluster is deployed and where the `StrimziSchemaRegistry`, `KafkaUser` and `KafkaTopic` resources are found.
 
 ## Deploy a Schema Registry
+
+The following resources must be deployed in the same namespace as your Kafka cluster.
 
 ### Step 1. Deploy a KafkaTopic
 
