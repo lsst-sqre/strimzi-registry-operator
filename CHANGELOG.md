@@ -1,5 +1,21 @@
 # Change log
 
+## 0.7.0 (2025-08-21)
+
+This release adds significant improvements to the Strimzi Registry Operator:
+
+- Modernize the operator codebase, adopt uv-based Python workflow with `pyproject.toml`, refresh dependencies, update GitHub Actions, and improve typing/formatting.
+- Update minikube workflow; test fixtures and docs refreshed.
+- Update RBAC for newer Kopf behavior and grant cluster-wide list of namespaces and watch CRDs.
+- Support for configuring Schema Registry **topic name** and the number of deployment **replicas** via `StrimziSchemaRegistry` CR.
+- Proper handling of `spec.compatibilityLevel` setting.
+- The Kafka cluster name is now read from the `strimzi.io/cluster` label on the `StrimziSchemaRegistry` CR.
+  **Breaking change:** this label is now required.
+- Default Schema Registry image tag updated to 8.0.0.
+- Deprecated `strimzi-version` field replaced with `strimziVersion`.
+- Operator now correctly **recreates the JKS secret** when Kafka CA or client certs rotate.
+- Expanded documentation covering access the **Schema Registry API** after deployment, new configuration options and improved the **installation instructions**.
+
 ## 0.6.0 (2022-08-03)
 
 Strimzi Registry Operator now adds the [recommended Kubernetes labels](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/#labels) to the `Deployment` and `Service` resources for the Confluent Schema Registry deployment.
