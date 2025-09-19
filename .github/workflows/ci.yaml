@@ -60,6 +60,7 @@ jobs:
         id: build
         with:
           image: ${{ github.repository }}
+          platforms: linux/amd64,linux/arm64
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Report result
