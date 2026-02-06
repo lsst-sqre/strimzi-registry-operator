@@ -252,6 +252,12 @@ spec:
   cpuRequest: ""
   memoryLimit: ""
   memoryRequest: ""
+  metrics:
+    enabled: false
+    port: 9404
+    configMapName: schema-registry-metrics
+    configMapKey: metrics-config.yml
+    javaAgentJarPath: /usr/share/java/cp-base-new/jmx_prometheus_javaagent-0.20.0.jar
 ```
 
 ### Strimzi-related configurations
@@ -314,6 +320,18 @@ spec:
 - `memoryLimit` is the cap on memory usage for the Schema Registry container. Default is to leave unset. Example `1000M` limits to 1000 megabytes.
 
 - `memoryRequest` is the requested memory for the Schema Registry container. Default is to leave unset. Example: `768M` requests 768 megabytes.
+
+### Metrics configuration (JMX exporter)
+
+- `metrics.enabled` enables the JMX Prometheus exporter configuration. Default is `false`.
+- `metrics.port` is the port exposed for metrics. Default is `9404`.
+- `metrics.configMapName` is the ConfigMap name containing the exporter config file. Required when metrics are enabled.
+- `metrics.configMapKey` is the key within that ConfigMap. Default is `metrics-config.yml`.
+- `metrics.javaAgentJarPath` is the path to the exporter jar in the Schema Registry container.
+  Default is `/usr/share/java/cp-base-new/jmx_prometheus_javaagent-0.20.0.jar`.
+
+When enabled, the operator mounts the ConfigMap at `/etc/jmx-exporter` and exposes
+the metrics port on the Schema Registry Service.
 
 ### In detail: listener configuration
 

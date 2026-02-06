@@ -104,6 +104,39 @@ spec:
                     The security protocol for the Schema Registry to
                     communicate with Kafka. Default is SSL. Can be SSL,
                     PLAINTEXT, SASL_PLAINTEXT, or SASL_SSL.
+                metrics:
+                  type: object
+                  description: >-
+                    Configure optional JMX exporter metrics for the Schema
+                    Registry.
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: false
+                      description: >-
+                        Enable the JMX Prometheus exporter settings.
+                    port:
+                      type: integer
+                      default: 9404
+                      description: >-
+                        Port exposed by the JMX exporter.
+                    configMapName:
+                      type: string
+                      description: >-
+                        Name of a ConfigMap containing the JMX exporter
+                        configuration.
+                    configMapKey:
+                      type: string
+                      default: "metrics-config.yml"
+                      description: >-
+                        Key in the ConfigMap containing the exporter config.
+                    javaAgentJarPath:
+                      type: string
+                      default: >-
+                        /usr/share/java/cp-base-new/jmx_prometheus_javaagent-0.20.0.jar
+                      description: >-
+                        Path to the JMX exporter Java agent jar in the
+                        Schema Registry container.
   names:
     kind: StrimziSchemaRegistry
     plural: strimzischemaregistries

@@ -114,6 +114,41 @@ def parse_registry_spec(
             f"using {listener_name}."
         )
 
+    metrics_spec = spec.get("metrics", {})
+    if not isinstance(metrics_spec, dict):
+        raise kopf.PermanentError(
+            "spec.metrics must be a mapping when provided."
+        )
+
+    metrics_enabled = metrics_spec.get("enabled", False)
+    metrics_config_map_name = metrics_spec.get("configMapName")
+    metrics_config_map_key = metrics_spec.get(
+        "configMapKey", "metrics-config.yml"
+    )
+    if metrics_enabled and not metrics_config_map_name:
+        raise kopf.PermanentError(
+            "spec.metrics.configMapName is required when metrics are enabled."
+        )
+    if metrics_enabled and not metrics_config_map_key:
+        raise kopf.PermanentError(
+            "spec.metrics.configMapKey must not be empty when metrics are enabled."
+        )
+    metrics_port = metrics_spec.get("port", 9404)
+    try:
+        metrics_port = int(metrics_port)
+    except (TypeError, ValueError) as err:
+        raise kopf.PermanentError(
+            "spec.metrics.port must be an integer."
+        ) from err
+    metrics_jar_path = metrics_spec.get(
+        "javaAgentJarPath",
+        "/usr/share/java/cp-base-new/jmx_prometheus_javaagent-0.20.0.jar",
+    )
+    if metrics_enabled and not metrics_jar_path:
+        raise kopf.PermanentError(
+            "spec.metrics.javaAgentJarPath must not be empty when metrics are enabled."
+        )
+
     return {
         "strimzi_api_version": strimzi_api_version,
         "listener_name": listener_name,
@@ -132,6 +167,11 @@ def parse_registry_spec(
         ),
         "security_protocol": spec.get("securityProtocol", "SSL"),
         "registry_topic": spec.get("registryTopic", "registry-schemas"),
+        "metrics_enabled": metrics_enabled,
+        "metrics_port": metrics_port,
+        "metrics_config_map_name": metrics_config_map_name,
+        "metrics_config_map_key": metrics_config_map_key,
+        "metrics_jar_path": metrics_jar_path,
     }
 
 
@@ -249,6 +289,11 @@ def create_registry_resources(
             compatibility_level=config["registry_compatibility_level"],
             security_protocol=config["security_protocol"],
             registry_topic=config["registry_topic"],
+            metrics_enabled=config["metrics_enabled"],
+            metrics_port=config["metrics_port"],
+            metrics_config_map_name=config["metrics_config_map_name"],
+            metrics_config_map_key=config["metrics_config_map_key"],
+            metrics_jar_path=config["metrics_jar_path"],
         )
         # Set the StrimziSchemaRegistry as the owner
         kopf.adopt(dep_body, owner=cast("kopf.Body", body))
@@ -262,7 +307,10 @@ def create_registry_resources(
         logger.info("Service already exists")
     except Exception:
         svc_body = create_service(
-            name=name, service_type=config["service_type"]
+            name=name,
+            service_type=config["service_type"],
+            metrics_enabled=config["metrics_enabled"],
+            metrics_port=config["metrics_port"],
         )
         kopf.adopt(svc_body, owner=cast("kopf.Body", body))
         k8s_core_v1_api.create_namespaced_service(

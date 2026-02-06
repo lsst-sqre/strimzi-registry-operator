@@ -145,6 +145,11 @@ def create_deployment(
     compatibility_level: str,
     security_protocol: str,
     registry_topic: str,
+    metrics_enabled: bool,
+    metrics_port: int,
+    metrics_config_map_name: str | None,
+    metrics_config_map_key: str,
+    metrics_jar_path: str,
 ) -> dict[str, Any]:
     """Create the JSON resource for a Deployment of the Confluence Schema
     Registry.
@@ -191,6 +196,16 @@ def create_deployment(
     registry_topic : `str`
         The name of the Kafka topic used by the Schema Registry to store
         schemas.
+    metrics_enabled : `bool`
+        Whether to enable JMX exporter metrics.
+    metrics_port : `int`
+        Port exposed by the JMX exporter.
+    metrics_config_map_name : `str` or `None`
+        Name of the ConfigMap with the JMX exporter configuration.
+    metrics_config_map_key : `str`
+        Key in the ConfigMap containing the exporter configuration.
+    metrics_jar_path : `str`
+        Path to the JMX exporter jar on the container filesystem.
 
     Returns
     -------
@@ -211,7 +226,22 @@ def create_deployment(
         compatibility_level=compatibility_level,
         security_protocol=security_protocol,
         registry_topic=registry_topic,
+        metrics_enabled=metrics_enabled,
+        metrics_port=metrics_port,
+        metrics_config_map_key=metrics_config_map_key,
+        metrics_jar_path=metrics_jar_path,
     )
+
+    volumes = [{"name": "tls", "secret": {"secretName": secret_name}}]
+    if metrics_enabled:
+        volumes.extend(
+            [
+                {
+                    "name": "jmx-exporter-config",
+                    "configMap": {"name": metrics_config_map_name},
+                },
+            ]
+        )
 
     # The pod template
     template = {
@@ -221,9 +251,7 @@ def create_deployment(
         },
         "spec": {
             "containers": [registry_container],
-            "volumes": [
-                {"name": "tls", "secret": {"secretName": secret_name}}
-            ],
+            "volumes": volumes,
         },
     }
 
@@ -262,6 +290,10 @@ def create_container_spec(
     compatibility_level: str,
     security_protocol: str,
     registry_topic: str,
+    metrics_enabled: bool,
+    metrics_port: int,
+    metrics_config_map_key: str,
+    metrics_jar_path: str,
 ) -> dict[str, Any]:
     """Create the container spec for the Schema Registry deployment.
 
@@ -299,6 +331,14 @@ def create_container_spec(
     registry_topic : `str`
         The name of the Kafka topic used by the Schema Registry to store
         schemas.
+    metrics_enabled : `bool`
+        Whether to enable JMX exporter metrics.
+    metrics_port : `int`
+        Port exposed by the JMX exporter.
+    metrics_config_map_key : `str`
+        Key in the ConfigMap containing the exporter configuration.
+    metrics_jar_path : `str`
+        Path to the JMX exporter jar on the container filesystem.
     """
     registry_env = [
         {
@@ -355,6 +395,21 @@ def create_container_spec(
         },
     ]
 
+    if metrics_enabled:
+        registry_env.extend(
+            [
+                {"name": "KAFKA_OPTS", "value": ""},
+                {
+                    "name": "JAVA_TOOL_OPTIONS",
+                    "value": (
+                        f"-javaagent:{metrics_jar_path}="
+                        f"{metrics_port}:/etc/jmx-exporter/"
+                        f"{metrics_config_map_key}"
+                    ),
+                },
+            ]
+        )
+
     registry_container = {
         "name": "server",
         "image": f"{registry_image}:{registry_image_tag}",
@@ -376,6 +431,23 @@ def create_container_spec(
         ],
         "resources": {},
     }
+    if metrics_enabled:
+        registry_container["ports"].append(
+            {
+                "name": "metrics",
+                "containerPort": metrics_port,
+                "protocol": "TCP",
+            }
+        )
+        registry_container["volumeMounts"].extend(
+            [
+                {
+                    "name": "jmx-exporter-config",
+                    "mountPath": "/etc/jmx-exporter",
+                    "readOnly": True,
+                },
+            ]
+        )
 
     if (
         registry_cpu_limit
@@ -404,7 +476,11 @@ def create_container_spec(
 
 
 def create_service(
-    *, name: str, service_type: str = "ClusterIP"
+    *,
+    name: str,
+    service_type: str = "ClusterIP",
+    metrics_enabled: bool = False,
+    metrics_port: int = 9404,
 ) -> dict[str, Any]:
     """Create a Service resource for the Schema Registry.
 
@@ -422,6 +498,10 @@ def create_service(
     service : `dict`
         The Service resource.
     """
+    ports = [{"name": "schema-registry", "port": 8081}]
+    if metrics_enabled:
+        ports.append({"name": "metrics", "port": metrics_port})
+
     return {
         "apiVersion": "v1",
         "kind": "Service",
@@ -437,7 +517,7 @@ def create_service(
         },
         "spec": {
             "type": service_type,
-            "ports": [{"name": "schema-registry", "port": 8081}],
+            "ports": ports,
             "selector": {
                 "app": name,
             },

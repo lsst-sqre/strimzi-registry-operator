@@ -41,7 +41,7 @@ jobs:
     needs: [test]
     timeout-minutes: 10
 
-    # Only do Docker builds of tagged releases and pull requests from ticket
+    # Only do Docker builds of tagged releases and pull requests from platform ticket
     # branches.  This will still trigger on pull requests from untrusted
     # repositories whose branch names match our tickets/* branch convention,
     # but in this case the build will fail with an error since the secret
@@ -49,7 +49,7 @@ jobs:
     if: >
       github.event_name != 'merge_group'
       && (startsWith(github.ref, 'refs/tags/')
-          || startsWith(github.head_ref, 'tickets/'))
+          || startsWith(github.head_ref, 'PLAT/'))
 
     steps:
       - uses: actions/checkout@v5
