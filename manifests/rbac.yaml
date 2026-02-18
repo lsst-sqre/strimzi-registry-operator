@@ -34,6 +34,10 @@ rules:
   - apiGroups: [roundtable.lsst.codes]
     resources: [strimzischemaregistries]
     verbs: [get, list, watch, patch]
+  # Support of use on OpenShift/OKD
+  - apiGroups: [roundtable.lsst.codes]
+    resources: [strimzischemaregistries/finalizers]
+    verbs: [update]
   # Access to the KafkaUser resource
   - apiGroups: [kafka.strimzi.io]
     resources: [kafkausers, kafkas]
