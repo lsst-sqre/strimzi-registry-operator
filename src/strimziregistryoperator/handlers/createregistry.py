@@ -155,6 +155,7 @@ def get_nullable(spec: dict[str, str], key: str) -> str | None:
 
 
 def create_registry_resources(
+    *,
     name: str,
     namespace: str,
     strimzi_api_version: str,
