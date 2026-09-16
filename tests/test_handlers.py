@@ -7,9 +7,10 @@ from unittest.mock import Mock
 
 import kopf
 import pytest
+from kubernetes.client.exceptions import ApiException
 
 from strimziregistryoperator import handlers, startup, state
-from strimziregistryoperator.handlers import createregistry
+from strimziregistryoperator.handlers import createregistry, secretwatcher
 
 
 def call_handler(handler: Any, **kwargs: Any) -> Any:
@@ -140,3 +141,108 @@ def test_delete_registry_removes_cached_name() -> None:
     call_handler(createregistry.delete_registry, name="registry")
 
     assert state.registry_names == set()
+
+
+@pytest.mark.parametrize("invalid_registry", ["missing", "different"])
+def test_cluster_ca_rotation_skips_untracked_registry(
+    invalid_registry: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state.cluster_name = "events"
+    state.registry_names.update({"active", invalid_registry})
+    k8s_client = Mock()
+    create_secret = Mock(return_value={"metadata": {"name": "active-jks"}})
+    update_deployment = Mock()
+
+    def get_ssr(
+        *, name: str, namespace: str, k8s_client: Any
+    ) -> dict[str, Any]:
+        if name == "missing":
+            raise ApiException(status=404)
+        cluster = "other" if name == "different" else "events"
+        return {"metadata": {"labels": {"strimzi.io/cluster": cluster}}}
+
+    monkeypatch.setattr(secretwatcher, "create_k8sclient", lambda: k8s_client)
+    monkeypatch.setattr(secretwatcher, "get_ssr", get_ssr)
+    monkeypatch.setattr(secretwatcher, "create_secret", create_secret)
+    monkeypatch.setattr(
+        secretwatcher,
+        "get_secret",
+        Mock(return_value={"metadata": {"resourceVersion": "12345"}}),
+    )
+    monkeypatch.setattr(
+        secretwatcher, "get_deployment", Mock(return_value=Mock())
+    )
+    monkeypatch.setattr(secretwatcher, "update_deployment", update_deployment)
+
+    secretwatcher.refresh_with_new_cluster_ca(
+        cluster_ca_secret={
+            "metadata": {"labels": {"strimzi.io/cluster": "events"}}
+        },
+        namespace="events",
+        logger=Mock(),
+    )
+
+    assert state.registry_names == {"active"}
+    create_secret.assert_called_once()
+    update_deployment.assert_called_once()
+
+
+def test_cluster_ca_rotation_propagates_api_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state.cluster_name = "events"
+    state.registry_names.add("registry")
+    monkeypatch.setattr(secretwatcher, "create_k8sclient", Mock())
+    monkeypatch.setattr(
+        secretwatcher,
+        "get_ssr",
+        Mock(side_effect=ApiException(status=500)),
+    )
+
+    with pytest.raises(ApiException) as excinfo:
+        secretwatcher.refresh_with_new_cluster_ca(
+            cluster_ca_secret={
+                "metadata": {"labels": {"strimzi.io/cluster": "events"}}
+            },
+            namespace="events",
+            logger=Mock(),
+        )
+
+    assert excinfo.value.status == 500
+    assert state.registry_names == {"registry"}
+
+
+@pytest.mark.parametrize("registry_state", ["missing", "different"])
+def test_client_secret_rotation_skips_untracked_registry(
+    registry_state: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state.cluster_name = "events"
+    state.registry_names.add("registry")
+    create_secret = Mock()
+    if registry_state == "missing":
+        get_ssr = Mock(side_effect=ApiException(status=404))
+    else:
+        get_ssr = Mock(
+            return_value={
+                "metadata": {"labels": {"strimzi.io/cluster": "other"}}
+            }
+        )
+    monkeypatch.setattr(secretwatcher, "create_k8sclient", Mock())
+    monkeypatch.setattr(secretwatcher, "get_ssr", get_ssr)
+    monkeypatch.setattr(secretwatcher, "create_secret", create_secret)
+
+    secretwatcher.refresh_with_new_client_secret(
+        kafkauser_secret={
+            "metadata": {
+                "name": "registry",
+                "labels": {"strimzi.io/cluster": "events"},
+            }
+        },
+        namespace="events",
+        logger=Mock(),
+    )
+
+    assert state.registry_names == set()
+    create_secret.assert_not_called()
