@@ -1,5 +1,8 @@
 """Tests for the certprocessor module."""
 
+import subprocess
+from typing import NamedTuple
+
 import pytest
 
 from strimziregistryoperator.certprocessor import (
@@ -8,146 +11,124 @@ from strimziregistryoperator.certprocessor import (
 )
 
 
-@pytest.fixture
-def cluster_ca_cert() -> str:
-    return """
------BEGIN CERTIFICATE-----
-MIIFLTCCAxWgAwIBAgIUCoBiowowH/WtkjOV3xhbkvjXx4QwDQYJKoZIhvcNAQEN
-BQAwLTETMBEGA1UECgwKaW8uc3RyaW16aTEWMBQGA1UEAwwNY2x1c3Rlci1jYSB2
-MDAeFw0yNTA3MDExNjA3MjhaFw0yNjA3MDExNjA3MjhaMC0xEzARBgNVBAoMCmlv
-LnN0cmltemkxFjAUBgNVBAMMDWNsdXN0ZXItY2EgdjAwggIiMA0GCSqGSIb3DQEB
-AQUAA4ICDwAwggIKAoICAQC7NOqfjVcvYIRBSA6fPutagN6eyi7uBLjGRTwRPuBN
-FyQ2acmiFhQm1zD+rMw/34WQRbrUPFtOdmVqHE/Po+uZeLAjhHvKvxEiDJwOn19w
-VOWvR4femioiOgCxaFAcsksuYWfkJDkUmEQXMCNI2n64DhNlTf/OyRHgPpEeCwJB
-0rMoX7H3hNxL9g9SEG8IITskfsZjaYIJublzQUQLbPEpjcYuhYSRraWLbg7/IIg6
-oHnSknc0haEWOuEapGOl/iUfL47oiyeIcqOxI+bI5v8O5T0o9wUtoWEBfS1J52eU
-Z9l1Ye0gs50lciANRgA3lygDLW3vFNJ9dpMNNPhFPDFQrl2HfDxUOCpqhqNEvjuT
-yWqZk/Cyib5PMTFJzmewqn0IfnrYG38MN0tC/JhUgbgYbR7xrxaFr5Tvq7laD9CR
-KBLEsgiJLD17bZo4N419oLQyxDtEu+Abph7kOoKzlnvK7XOdhncCwq+fDdEMCDKb
-fN2XViLsa86p76u6rdWn0WSTRbIcwJzlaVmUm/m0glXbu6LFdHqP9kuaYsFv5KF/
-o/xC+1U7zCccMQKACn7WBQX0k2uMod00wr9V6VBa2qI7K7vHHblRLvrYYabKzSdv
-PuXPlfQKBn6AMZbgNB00VK8MYlcbtL2ulwA4DPz2pdbcoIpGcfDw3r0VPcB0GXSS
-nQIDAQABo0UwQzAdBgNVHQ4EFgQUWcDEXdJ7ygpy1zvubFAedz6tUqswEgYDVR0T
-AQH/BAgwBgEB/wIBADAOBgNVHQ8BAf8EBAMCAQYwDQYJKoZIhvcNAQENBQADggIB
-AF3faRFxfccVdVUh4C7h26q4mJ05xcD/Y/9UfzPG/aXYc3WyN5sIot+mpBpIIOTD
-9Up5drZ2OG2+5FGHYAEeCDeYgdWu0r2tKEVogwgAu18wHjVR5CfY1eO/tEzLk951
-0sSN5+4fZetNXb23SU1dK5g/2Elmu5ZZtLId/FmeizJLyaJLVUj+D9ybyqZjaT5s
-9V+NIZ1HwczfaF/riRLK1VQBUPTrSomQhz3+74HUIMfJqJ+JnZQLj8dTcsB6F495
-XIkT3HJ+Fy5FfG/NyJg9eLy8hD2RNUmfWgWCWyb1Y0EpWt+lDZqKNsY9+CHtTPOd
-XdLNUGY3s7wrSB/K/bbD0Yb3f0/v33JyXBTDg2qu20CPxXwL74B7yG5wA8RlyORs
-KM1GszY3B+iAyqUJkhDvDyXboyFv3a2+8t44wNlsZTqd2AVtIa52IB3tT2pTPqzK
-RaGNk8J9Y6TC9UGw+hr8ipsTq8B6N367d6meGM5UU6MLGbPQY9eCa+tsC6LNUMm6
-Opa2xZlqgWd8D71IpRhntBU6y1mMxj6TVvuDvgjNIQTBt9y6nedw+ZcewiD4Xmhl
-IkIOFNYYIgD0iCrrVrp8jRBBx0uNlEaE/e9vlYEwNBxOhbKjK89fQGLeeE2s+Fyn
-EI4HwgyWa7q1Dac0WQQujddaMXyNKO9yO1iHSqxaZlpU
------END CERTIFICATE-----
-    """
+class CertificateMaterial(NamedTuple):
+    cluster_ca_cert: str
+    user_ca_cert: str
+    user_cert: str
+    user_key: str
 
 
-@pytest.fixture
-def user_ca_cert() -> str:
-    return """
------BEGIN CERTIFICATE-----
-MIIFLTCCAxWgAwIBAgIULb0OZBInDhAB0CnwZN0XG8upivkwDQYJKoZIhvcNAQEN
-BQAwLTETMBEGA1UECgwKaW8uc3RyaW16aTEWMBQGA1UEAwwNY2xpZW50cy1jYSB2
-MDAeFw0yNTA3MDExNjA3MjhaFw0yNjA3MDExNjA3MjhaMC0xEzARBgNVBAoMCmlv
-LnN0cmltemkxFjAUBgNVBAMMDWNsaWVudHMtY2EgdjAwggIiMA0GCSqGSIb3DQEB
-AQUAA4ICDwAwggIKAoICAQDxm9H3GoFPr0dvZ82LNyedIkIIYb0hl/ix6JpyXnFk
-wiVQd1jmp1Sf8wkgdXVy6XL8d+FQtlHVHbnL7L7HSdUsr8IMO+UBQmGxBEhWCtC5
-Wc6AJzicUuj65jpxygT5SuyIAKsTMH3zavlRq7Od+stdOvTFr10GMpRXkYDczZO7
-l9Wu/5oeeg1G//Sa0nqkjguIT/R2Qd29W11mX5YCwjXPFxM2JnNAZxBrFSIgbROO
-nStXTxzzV7ySi7HB4tYsazaYwkKgjKYaUnuKGN+kr7RjcwRc9TgpUHi3rtN6NitK
-j3zVoF23wXurOP+lch/LQXFIvmFmZ9DaZ4J+MarACT54cZVHYXfeWlX5ZprHZ8WI
-i9HvOnXeJWjX3v+MUbqFlOFalk3RCHcD9NeK/2n0OCvuNd6G3ZwVilSqdO5Vn/pw
-Tqgpi0Bz6Oh5fze+CDWzXxXjkiO/90p1k9F1UfRiYyQm9iv0vwac51pmfjmXi1ou
-i+Y1fV7ESbXFYyG7OCW56qg9Cviva44hEd5hPR+XbbovKVtoMC7bLFTuyy0eArvE
-8nfmKa93ap1LSyB7W6Jzg1K8igFsbCa596SWWg7VlNA+/xIuQpJiOI+n/k7vMYvN
-/2g7nJRJrzuC6kFUJ1pz0UmJVKP7dOQ6fhOslj6w8vwEi4FJQjSztDQxl2Bo5Er6
-2QIDAQABo0UwQzAdBgNVHQ4EFgQUP+9AaIaVZjIUpS4lijeXe57MZW0wEgYDVR0T
-AQH/BAgwBgEB/wIBADAOBgNVHQ8BAf8EBAMCAQYwDQYJKoZIhvcNAQENBQADggIB
-AMtt9ewggjecYvktrf4AOZ/PT+op0lmK8VOVKbokK5QCVTOOUgWZNUxH48WSRGaC
-xjuGSloz+kDUl2aVl2xkvdRF0NmkCffIuzf6ms94eSYJq1J7fisnJbXTZZ5NnaFZ
-XHFyVJhYoQtwJc6aXG7131caUGzfBSRZp3pg2BWzS4v6XHxK03fQJdVyPDzUkmTz
-8Mq/nZPWLrALobpVU5KTQLaJiPTpejr+KvY0AmjBocZftpMub48LpKyw3mV0GHPM
-sC4Gr5Z36p/FTLxKHOOmhAWIg5xWiehGqCk2oVmyrRU1SqOZsI/jjwujwY76OFhS
-d/OuabfaUEyTJYpcL3K/6EAqwwIEXAIdmimLN01hjI5BinfO0R4M1Cg/ho2gmLcl
-Nmh4wjl3NbWWy5RUfCPI+EpSdGQt569o1hw/O+nq5wF+B5rJj/ZVccnfvUhKxVfX
-I9DstVeXIJRpUPNjE2xCLbAR36X5DqZwd7p5F3p7okCCb56PFeh8Ev5nS1rKoVWW
-nDnJlyhwxcocUJiGXdSD2mqm0bvuVpjdtZXfs3qvxhRo+YZxwlRJOqxtUGItnGt5
-S2scbUuMyJrg8m8E3uUh640TYAxcLzr51D4WIybn32hnUR163yDqdYsyQ7AhSWtq
-g1PoISkvLmuDQfKCGXgc/Da1EuiYQTY2cVYIJRN+wknw
------END CERTIFICATE-----
-"""
+def _run_openssl(*args: str) -> None:
+    subprocess.run(
+        ["openssl", *args],
+        capture_output=True,
+        check=True,
+    )
 
 
-@pytest.fixture
-def user_cert() -> str:
-    return """
------BEGIN CERTIFICATE-----
-MIIEPzCCAiegAwIBAgIULH9eRCjeH4GwIlm86WdJk6ikDM8wDQYJKoZIhvcNAQEN
-BQAwLTETMBEGA1UECgwKaW8uc3RyaW16aTEWMBQGA1UEAwwNY2xpZW50cy1jYSB2
-MDAeFw0yNTA3MDExNjA3MzRaFw0yNjA3MDExNjA3MzRaMCQxIjAgBgNVBAMMGXNh
-c3F1YXRjaC1zY2hlbWEtcmVnaXN0cnkwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAw
-ggEKAoIBAQDXActAAUR0hIIgKT43eA1Frnr5c1tCdfaWcm0gqguVbeke2l7FX/wq
-CqjfQaW0K8+5P1rHhLU9Y2Yycpf9BXyaJyI+go9k1pK40UxaszaVAwK/l8aA95IK
-U//mF/n5ybkb1L8EBYVUVUv70If3gydMOlGQN9Z7q3T8LKBXVlfHuoBLQRkReerk
-0AywKrU8luZ9VtFt9qutbk6hbiJn9myfpCoFfrRbkz12DPp2iqJ1bVujvfaAQInF
-+g7XsBKT34x/SGQX3L8LdPCQFDeb9g6oGbtm5WpVVmNg9uu+DE56e6ofC4u+4Zhb
-IasiVGQHcOaoiWzO6DUDIdiVlyuOgO5RAgMBAAGjYDBeMB0GA1UdDgQWBBQ2qLH7
-ehpEJ7GaRbzleVJT05zjmjAMBgNVHRMBAf8EAjAAMA4GA1UdDwEB/wQEAwIFoDAf
-BgNVHSMEGDAWgBQ/70BohpVmMhSlLiWKN5d7nsxlbTANBgkqhkiG9w0BAQ0FAAOC
-AgEA7OSLjFGkYADycLYgH/dBqiXI/hR4xugVXY0XTsvhE2525qu8cGqP5a1+UBbD
-Vm9cni9hp1kzyFzJnWba57D2KjuUEmAwzlWBWG4b3mOKimLyXscZAliSs3go6Aie
-7ZHNkW32+yU/et9a0XlqhJfn+e2WbjUSz18rhr8bjOR0ELcPgxmM9srSSBjKLaBi
-0NbQf8oviKj53MPzzf7qtmbVDyqLz4esYdIdVXsAkA4Ufte/hzSP4jC0AMZHbUnk
-WvwMs6JEh2+wvT7gUrTW+yk/CPjhCXQ2FDoKdriGIg7ffdyXEApqWJNxSTtAlY0O
-iWCmkrX2eCmorfgRGX9AIJCh3oTrRSnnZr/DpdFYsl6/4Q0pfYyvY8KrBdCmHovK
-wLS/KI5437H4tc1Ce1tlV1r4rbk9ju4XJY2Vf8xYGdcf7q1JhR7prIVrs3hZ7pB3
-+O2rPV2YcAdXeRRpQ2vXJGLbmGpDwqtUjofb6+gwm4kJu9/ZdssHnvKDKgrbEIyx
-8ZCH+6lkNwVtOZysqCqYOFpSoPChqITQoh+WalzCIaijkUbb9XhvD9K+3DSxssxY
-sjTWHPgngMNAAOgGo74xn1WQTtklOiyUTvwOQMYe7i9ooYgTwruVaG+q91HmRBr1
-yhS7T0pGOsVnUH+antr/Sk4MEIALqaCwZSTQonL/tl35zo8=
------END CERTIFICATE-----
-"""
+@pytest.fixture(scope="module")
+def certificate_material(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> CertificateMaterial:
+    cert_dir = tmp_path_factory.mktemp("certificates")
+
+    cluster_ca_key_path = cert_dir / "cluster-ca.key"
+    cluster_ca_cert_path = cert_dir / "cluster-ca.crt"
+    _run_openssl(
+        "req",
+        "-x509",
+        "-newkey",
+        "rsa:2048",
+        "-keyout",
+        str(cluster_ca_key_path),
+        "-out",
+        str(cluster_ca_cert_path),
+        "-days",
+        "1",
+        "-nodes",
+        "-subj",
+        "/CN=Test Cluster CA",
+    )
+
+    user_ca_key_path = cert_dir / "user-ca.key"
+    user_ca_cert_path = cert_dir / "user-ca.crt"
+    _run_openssl(
+        "req",
+        "-x509",
+        "-newkey",
+        "rsa:2048",
+        "-keyout",
+        str(user_ca_key_path),
+        "-out",
+        str(user_ca_cert_path),
+        "-days",
+        "1",
+        "-nodes",
+        "-subj",
+        "/CN=Test User CA",
+    )
+
+    user_key_path = cert_dir / "user.key"
+    user_csr_path = cert_dir / "user.csr"
+    user_cert_path = cert_dir / "user.crt"
+    _run_openssl(
+        "req",
+        "-newkey",
+        "rsa:2048",
+        "-keyout",
+        str(user_key_path),
+        "-out",
+        str(user_csr_path),
+        "-nodes",
+        "-subj",
+        "/CN=Test User",
+    )
+    _run_openssl(
+        "x509",
+        "-req",
+        "-in",
+        str(user_csr_path),
+        "-CA",
+        str(user_ca_cert_path),
+        "-CAkey",
+        str(user_ca_key_path),
+        "-CAcreateserial",
+        "-out",
+        str(user_cert_path),
+        "-days",
+        "1",
+        "-sha256",
+    )
+
+    return CertificateMaterial(
+        cluster_ca_cert=cluster_ca_cert_path.read_text(),
+        user_ca_cert=user_ca_cert_path.read_text(),
+        user_cert=user_cert_path.read_text(),
+        user_key=user_key_path.read_text(),
+    )
 
 
-@pytest.fixture
-def user_key() -> str:
-    return """
------BEGIN PRIVATE KEY-----
-MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDXActAAUR0hIIg
-KT43eA1Frnr5c1tCdfaWcm0gqguVbeke2l7FX/wqCqjfQaW0K8+5P1rHhLU9Y2Yy
-cpf9BXyaJyI+go9k1pK40UxaszaVAwK/l8aA95IKU//mF/n5ybkb1L8EBYVUVUv7
-0If3gydMOlGQN9Z7q3T8LKBXVlfHuoBLQRkReerk0AywKrU8luZ9VtFt9qutbk6h
-biJn9myfpCoFfrRbkz12DPp2iqJ1bVujvfaAQInF+g7XsBKT34x/SGQX3L8LdPCQ
-FDeb9g6oGbtm5WpVVmNg9uu+DE56e6ofC4u+4ZhbIasiVGQHcOaoiWzO6DUDIdiV
-lyuOgO5RAgMBAAECggEAAzEDoCLLFIlJZTDRIgGmMMj/1xp42eoZi7vAr7twCi4x
-FHdcil5Ixlb7xFSbh3eFaqDshNZzc9w5Doak7hyNI1Y+K+KRCyFXcpoPIa/tuRVS
-W4WyBjgM8ucZGIR1ywwzgAMO0s1CLWSwVaYpK1AteFqYdPH41qnoEqL9V+gjZW0l
-HHuiTmdUPL/9lYQkpNUMuBnrKU+NsiUtqDsnZnm47JkEwxXQ85U3erCuI1TGLw3Y
-rHeWhvFA6VkAkhZe0T0jHXP/WZnqN1TloipOmoySLpw75qw/Pz0Xw2dfFWoN8RaZ
-NFEDWTA7t185PoRlfaW2BQu1eAhxA9dx4AmO+g48AQKBgQDv9vt+nhwu78MIboa7
-KfZLv7ODXndQkAxQxC4NEnzpS0aQiCfniLlWKfhzGwxzh3+zSXE9H5ldieObwye8
-7FiyC0Afc9XTTDGs/JsXdGhVHyN+M1RKTeBwhJIV9CXyrMTiKIpqfgOommnfjxNk
-+hadeLTRax573Ll+0I52yMt5bwKBgQDlX92AOu+Qx06B9xSr692rfZNJ16AJ01z9
-tDHdU365Ps094iJej4sz9AnI0/1dFHJcYCAljcNr+KL/Ud0mLaTdj6JfYL8t8gW/
-MPZlnQiwsqRQpaIX9Dah41vCbIw2WE8FFy8c4nNh9kKUlz5B4fvY4ebkgqdXmhN6
-U7WY37S0PwKBgQCrh/JIlT7yMkNJALDgk2NSzGrGyj0h4oZbKZD9mSyfG0cKw7k6
-oZpSRFgr97bT0pTvFN2UYsUffxSrYDpEqvHP+4jPst6zVvDfhgZbIsP9rO+TI5/q
-KXb5F1rRxJ9ntCZcv7wJ2aBF4nMx8jVb5gVKdWFTnW3B/oq+Ytijgm8okwKBgDzR
-c2jJt7W6sv1Q50FClA8hh8k/jCauzWxTuBkIR4SUu1TaPeS2yOEopuOCGh7xCfWm
-Yz+x3Awn7Agoy6uQ1LMOn64MeASVtKJiOCLvRVucsmbT1CvnzAiWwUDHCVJrjeA6
-qnpNLOzfn/3IMHDFm8KA+3jBj99xchKwWWlEf6R/AoGBAIWgdUa1Z8/m32cR7Zkv
-1DZEEx97S+kLzVLWCWl1aMTr9qaaNZiK7Y0EaWrhhS4JRJZfzPi9Ua5y2j6naPx/
-CptewgbE43dZvFJMUbzrJChL0osK+2JUgM393PR3ccdpmEkImlxoHtUElTVfVrZf
-rruTio8kRk1SQrdZpxzsZbmw
------END PRIVATE KEY-----
-"""
+@pytest.fixture(scope="module")
+def cluster_ca_cert(certificate_material: CertificateMaterial) -> str:
+    return certificate_material.cluster_ca_cert
+
+
+@pytest.fixture(scope="module")
+def user_ca_cert(certificate_material: CertificateMaterial) -> str:
+    return certificate_material.user_ca_cert
+
+
+@pytest.fixture(scope="module")
+def user_cert(certificate_material: CertificateMaterial) -> str:
+    return certificate_material.user_cert
+
+
+@pytest.fixture(scope="module")
+def user_key(certificate_material: CertificateMaterial) -> str:
+    return certificate_material.user_key
 
 
 def test_create_truststore(cluster_ca_cert: str) -> None:
-    # NB: This test depends upon the cert fixtures, which expire in 1 year
-    # (2026-07-01).
     truststore, password = create_truststore(
         cluster_ca_cert, password="test1234"
     )
@@ -159,8 +140,6 @@ def test_create_truststore(cluster_ca_cert: str) -> None:
 def test_create_keystore(
     user_ca_cert: str, user_cert: str, user_key: str
 ) -> None:
-    # NB: This test depends upon the cert fixtures, which expire in 1 year
-    # (2026-07-01).
     keystore, password = create_keystore(
         user_ca_cert, user_cert, user_key, password="test1234"
     )
