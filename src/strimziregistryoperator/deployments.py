@@ -12,6 +12,7 @@ __all__ = (
     "create_service",
     "get_cluster_name",
     "get_kafka_bootstrap_server",
+    "update_deployment",
 )
 
 
@@ -458,7 +459,11 @@ def update_deployment(
     """
     key_prefix = "strimziregistryoperator.roundtable.lsst.codes"
     secret_version_key = f"{key_prefix}/jksVersion"
-    deployment.metadata.annotations[secret_version_key] = secret_version
+    annotations = deployment.spec.template.metadata.annotations
+    if annotations is None:
+        annotations = {}
+        deployment.spec.template.metadata.annotations = annotations
+    annotations[secret_version_key] = secret_version
 
     apps_api = k8s_client.AppsV1Api()
     apps_api.patch_namespaced_deployment(
