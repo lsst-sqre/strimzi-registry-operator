@@ -36,6 +36,7 @@ ignore = [
     "ASYNC109", # many async functions use asyncio.timeout internally
     "BLE001",   # we want to catch and report Exception in background tasks
     "C414",     # nested sorted is how you sort by multiple keys with reverse
+    "CPY001",   # missing copyright notice at top of file
     "D102",     # sometimes we use docstring inheritence
     "D104",     # don't see the point of documenting every package
     "D105",     # our style doesn't require docstrings for magic methods
