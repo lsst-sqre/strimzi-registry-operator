@@ -22,8 +22,13 @@ jobs:
           sudo apt-get install -y httpie
 
       - name: Set up Minikube
-        uses: medyagh/setup-minikube@latest
+        uses: medyagh/setup-minikube@e9e035a86bbc3caea26a450bd4dbf9d0c453682e # v0.0.21
         id: minikube
+        with:
+          minikube-version: 1.39.0
+          kubernetes-version: v1.37.0
+          driver: docker
+          container-runtime: docker
 
       - name: Test Minikube cluster
         run: kubectl get nodes
