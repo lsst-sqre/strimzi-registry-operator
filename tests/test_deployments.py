@@ -1,5 +1,8 @@
 """Tests for the strimziregistryoperator.deployments module."""
 
+from types import SimpleNamespace
+from unittest.mock import Mock
+
 import kopf
 import pytest
 import yaml
@@ -9,6 +12,7 @@ from strimziregistryoperator.deployments import (
     create_service,
     get_cluster_name,
     get_kafka_bootstrap_server,
+    update_deployment,
 )
 
 
@@ -250,6 +254,36 @@ def test_create_deployment_resource_settings() -> None:
     assert resources["limits"]["memory"] == "1000M"
     assert resources["requests"]["cpu"] == "100m"
     assert resources["requests"]["memory"] == "768M"
+
+
+def test_update_deployment() -> None:
+    top_level_annotations = {"existing": "annotation"}
+    pod_template_metadata = SimpleNamespace(annotations=None)
+    deployment = SimpleNamespace(
+        metadata=SimpleNamespace(annotations=top_level_annotations),
+        spec=SimpleNamespace(
+            template=SimpleNamespace(metadata=pod_template_metadata)
+        ),
+    )
+    apps_api = Mock()
+    k8s_client = Mock()
+    k8s_client.AppsV1Api.return_value = apps_api
+
+    update_deployment(
+        deployment=deployment,
+        secret_version="12345",
+        k8s_client=k8s_client,
+        name="example-server",
+        namespace="events",
+    )
+
+    assert pod_template_metadata.annotations == {
+        "strimziregistryoperator.roundtable.lsst.codes/jksVersion": "12345"
+    }
+    assert deployment.metadata.annotations == {"existing": "annotation"}
+    apps_api.patch_namespaced_deployment.assert_called_once_with(
+        name="example-server", namespace="events", body=deployment
+    )
 
 
 def test_get_cluster_name() -> None:

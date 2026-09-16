@@ -11,10 +11,11 @@ __all__ = (
 from typing import Any, cast
 
 import kopf
+from kubernetes.client.exceptions import ApiException
 
 from .. import state
 from ..certprocessor import create_secret
-from ..deployments import update_deployment
+from ..deployments import get_cluster_name, update_deployment
 from ..k8s import create_k8sclient, get_deployment, get_secret, get_ssr
 
 
@@ -101,13 +102,18 @@ def refresh_with_new_cluster_ca(
     """
     k8s_client = create_k8sclient()
 
-    # Iterate over each managed registry...
-    for registry_name in state.registry_names:
-        cluster = cluster_ca_secret["metadata"]["labels"]["strimzi.io/cluster"]
+    cluster = cluster_ca_secret["metadata"]["labels"]["strimzi.io/cluster"]
 
-        ssr_body = get_ssr(
-            name=registry_name, namespace=namespace, k8s_client=k8s_client
+    # Iterate over a snapshot so stale cache entries can be removed safely.
+    for registry_name in tuple(state.registry_names):
+        ssr_body = _get_tracked_registry(
+            name=registry_name,
+            namespace=namespace,
+            k8s_client=k8s_client,
+            logger=logger,
         )
+        if ssr_body is None:
+            continue
 
         secret = create_secret(
             kafka_username=registry_name,
@@ -170,10 +176,15 @@ def refresh_with_new_client_secret(
     kafka_username = kafkauser_secret["metadata"]["name"]
     cluster = kafkauser_secret["metadata"]["labels"]["strimzi.io/cluster"]
 
-    # Get the StrimziSchemaRegistry resource for this KafkaUser
-    ssr_body = get_ssr(
-        name=kafka_username, namespace=namespace, k8s_client=k8s_client
+    # Get the StrimziSchemaRegistry resource for this KafkaUser.
+    ssr_body = _get_tracked_registry(
+        name=kafka_username,
+        namespace=namespace,
+        k8s_client=k8s_client,
+        logger=logger,
     )
+    if ssr_body is None:
+        return
 
     # Create or update the Secret with the new client secret
     secret = create_secret(
@@ -211,3 +222,33 @@ def refresh_with_new_client_secret(
         namespace=namespace,
         k8s_client=k8s_client,
     )
+
+
+def _get_tracked_registry(
+    *,
+    name: str,
+    namespace: str,
+    k8s_client: Any,
+    logger: Any,
+) -> dict[str, Any] | None:
+    """Get a registry if it still exists and belongs to this operator."""
+    try:
+        registry = get_ssr(
+            name=name, namespace=namespace, k8s_client=k8s_client
+        )
+    except ApiException as e:
+        if e.status != 404:
+            raise
+        logger.info(f"StrimziSchemaRegistry {name} no longer exists.")
+        state.registry_names.discard(name)
+        return None
+
+    if get_cluster_name(registry) != state.cluster_name:
+        logger.info(
+            f"StrimziSchemaRegistry {name} no longer belongs to Kafka "
+            f"cluster {state.cluster_name}."
+        )
+        state.registry_names.discard(name)
+        return None
+
+    return registry

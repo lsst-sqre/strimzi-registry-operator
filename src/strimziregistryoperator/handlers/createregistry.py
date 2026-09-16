@@ -3,15 +3,19 @@
 __all__ = (
     "create_registry",
     "create_registry_resources",
+    "delete_registry",
     "get_nullable",
     "parse_registry_spec",
     "register_registry_name",
 )
 
+from collections.abc import Callable
 from typing import Any, cast
 
 import kopf
+from kubernetes.client.exceptions import ApiException
 
+from strimziregistryoperator import state
 from strimziregistryoperator.certprocessor import create_secret
 from strimziregistryoperator.deployments import (
     create_deployment,
@@ -25,7 +29,6 @@ from strimziregistryoperator.k8s import (
     get_secret,
     get_service,
 )
-from strimziregistryoperator.state import registry_names
 
 
 @kopf.on.create("roundtable.lsst.codes", "v1beta1", "strimzischemaregistries")  # type: ignore[arg-type]
@@ -65,6 +68,19 @@ def create_registry(
     **kwargs : Any
         Additional keyword arguments provided by kopf.
     """
+    cluster_name = get_cluster_name(body)
+    if cluster_name is None:
+        raise kopf.PermanentError(
+            "Missing required label strimzi.io/cluster on "
+            "StrimziSchemaRegistry."
+        )
+    if cluster_name != state.cluster_name:
+        logger.info(
+            f"Ignoring StrimziSchemaRegistry {name} for Kafka cluster "
+            f"{cluster_name}."
+        )
+        return
+
     config = parse_registry_spec(spec, name, logger)
     k8s_client = create_k8sclient()
     create_registry_resources(
@@ -78,6 +94,17 @@ def create_registry(
         config=config,
     )
     register_registry_name(name)
+
+
+@kopf.on.delete(
+    "roundtable.lsst.codes",
+    "v1beta1",
+    "strimzischemaregistries",
+    optional=True,
+)
+def delete_registry(*, name: str, **kwargs: Any) -> None:
+    """Remove a deleted StrimziSchemaRegistry from the local cache."""
+    state.registry_names.discard(name)
 
 
 def parse_registry_spec(
@@ -231,10 +258,14 @@ def create_registry_resources(
     )["metadata"]["resourceVersion"]
 
     # Create the Schema Registry deployment
-    try:
-        get_deployment(name=name, namespace=namespace, k8s_client=k8s_client)
+    if _resource_exists(
+        get_deployment,
+        name=name,
+        namespace=namespace,
+        k8s_client=k8s_client,
+    ):
         logger.info("Deployment already exists")
-    except Exception:
+    else:
         dep_body = create_deployment(
             name=name,
             bootstrap_server=bootstrap_server,
@@ -258,10 +289,14 @@ def create_registry_resources(
         )
 
     # Create the http service to access the Schema Registry REST API
-    try:
-        get_service(name=name, namespace=namespace, k8s_client=k8s_client)
+    if _resource_exists(
+        get_service,
+        name=name,
+        namespace=namespace,
+        k8s_client=k8s_client,
+    ):
         logger.info("Service already exists")
-    except Exception:
+    else:
         svc_body = create_service(
             name=name, service_type=config["service_type"]
         )
@@ -271,6 +306,23 @@ def create_registry_resources(
         )
 
 
+def _resource_exists(
+    getter: Callable[..., Any],
+    *,
+    name: str,
+    namespace: str,
+    k8s_client: Any,
+) -> bool:
+    """Check whether a Kubernetes resource exists."""
+    try:
+        getter(name=name, namespace=namespace, k8s_client=k8s_client)
+    except ApiException as e:
+        if e.status == 404:
+            return False
+        raise
+    return True
+
+
 def register_registry_name(name: str) -> None:
     """Add the name of the registry to the cache."""
-    registry_names.add(name)
+    state.registry_names.add(name)

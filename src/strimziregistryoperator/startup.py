@@ -4,14 +4,17 @@ __all__ = ("start_operator",)
 
 from typing import Any
 
+import kopf
 import structlog
 from kubernetes.client.rest import ApiException
 
 from strimziregistryoperator import state
+from strimziregistryoperator.deployments import get_cluster_name
 from strimziregistryoperator.k8s import create_k8sclient
 
 
-def start_operator(logger: Any) -> None:
+@kopf.on.startup()
+def start_operator(logger: Any, **kwargs: Any) -> None:
     """Start up the operator, priming its cache of the application state."""
     if logger is None:
         logger = structlog.getLogger(__name__)
@@ -33,7 +36,10 @@ def start_operator(logger: Any) -> None:
         )
         return
 
-    # Add these StrimziSchemaRegistry names to state.registry_names
-    for ssr in response["items"]:
-        name = ssr["metadata"]["name"]
-        state.registry_names.add(name)
+    registry_names = {
+        ssr["metadata"]["name"]
+        for ssr in response["items"]
+        if get_cluster_name(ssr) == state.cluster_name
+    }
+    state.registry_names.clear()
+    state.registry_names.update(registry_names)
