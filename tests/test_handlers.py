@@ -246,3 +246,127 @@ def test_client_secret_rotation_skips_untracked_registry(
 
     assert state.registry_names == set()
     create_secret.assert_not_called()
+
+
+def mock_registry_resource_dependencies(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[Mock, Mock, Mock]:
+    k8s_client = Mock()
+    get_deployment = Mock()
+    get_service = Mock()
+    monkeypatch.setattr(
+        createregistry,
+        "get_kafka_bootstrap_server",
+        Mock(return_value="kafka:9093"),
+    )
+    monkeypatch.setattr(
+        createregistry,
+        "create_secret",
+        Mock(return_value={"metadata": {"name": "registry-jks"}}),
+    )
+    monkeypatch.setattr(
+        createregistry,
+        "get_secret",
+        Mock(return_value={"metadata": {"resourceVersion": "12345"}}),
+    )
+    monkeypatch.setattr(createregistry, "get_deployment", get_deployment)
+    monkeypatch.setattr(createregistry, "get_service", get_service)
+    monkeypatch.setattr(kopf, "adopt", Mock())
+    return k8s_client, get_deployment, get_service
+
+
+def registry_body() -> dict[str, Any]:
+    return {
+        "apiVersion": "roundtable.lsst.codes/v1beta1",
+        "kind": "StrimziSchemaRegistry",
+        "metadata": {
+            "name": "registry",
+            "namespace": "events",
+            "uid": "12345",
+            "labels": {"strimzi.io/cluster": "events"},
+        },
+    }
+
+
+def registry_config() -> dict[str, Any]:
+    return {
+        "registry_image": "confluentinc/cp-schema-registry",
+        "registry_image_tag": "8.0.0",
+        "registry_replicas": 1,
+        "registry_cpu_limit": None,
+        "registry_cpu_request": None,
+        "registry_mem_limit": None,
+        "registry_mem_request": None,
+        "registry_compatibility_level": "forward",
+        "security_protocol": "SSL",
+        "registry_topic": "registry-schemas",
+        "service_type": "ClusterIP",
+    }
+
+
+def create_registry_resources(k8s_client: Mock) -> None:
+    createregistry.create_registry_resources(
+        name="registry",
+        namespace="events",
+        strimzi_api_version="v1beta2",
+        listener_name="tls",
+        k8s_client=k8s_client,
+        body=registry_body(),
+        logger=Mock(),
+        config=registry_config(),
+    )
+
+
+def test_existing_registry_resources_are_not_created(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, _, _ = mock_registry_resource_dependencies(monkeypatch)
+
+    create_registry_resources(k8s_client)
+
+    k8s_client.AppsV1Api.return_value.create_namespaced_deployment.assert_not_called()
+    k8s_client.CoreV1Api.return_value.create_namespaced_service.assert_not_called()
+
+
+def test_missing_registry_resources_are_created(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, get_deployment, get_service = (
+        mock_registry_resource_dependencies(monkeypatch)
+    )
+    get_deployment.side_effect = ApiException(status=404)
+    get_service.side_effect = ApiException(status=404)
+
+    create_registry_resources(k8s_client)
+
+    k8s_client.AppsV1Api.return_value.create_namespaced_deployment.assert_called_once()
+    k8s_client.CoreV1Api.return_value.create_namespaced_service.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("resource", "error"),
+    [
+        ("deployment", ApiException(status=403)),
+        ("deployment", RuntimeError("deployment lookup failed")),
+        ("service", ApiException(status=500)),
+        ("service", RuntimeError("service lookup failed")),
+    ],
+)
+def test_registry_resource_lookup_errors_are_propagated(
+    resource: str,
+    error: Exception,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, get_deployment, get_service = (
+        mock_registry_resource_dependencies(monkeypatch)
+    )
+    if resource == "deployment":
+        get_deployment.side_effect = error
+    else:
+        get_service.side_effect = error
+
+    with pytest.raises(type(error)):
+        create_registry_resources(k8s_client)
+
+    k8s_client.AppsV1Api.return_value.create_namespaced_deployment.assert_not_called()
+    k8s_client.CoreV1Api.return_value.create_namespaced_service.assert_not_called()

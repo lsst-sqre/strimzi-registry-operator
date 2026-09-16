@@ -9,9 +9,11 @@ __all__ = (
     "register_registry_name",
 )
 
+from collections.abc import Callable
 from typing import Any, cast
 
 import kopf
+from kubernetes.client.exceptions import ApiException
 
 from strimziregistryoperator import state
 from strimziregistryoperator.certprocessor import create_secret
@@ -256,10 +258,14 @@ def create_registry_resources(
     )["metadata"]["resourceVersion"]
 
     # Create the Schema Registry deployment
-    try:
-        get_deployment(name=name, namespace=namespace, k8s_client=k8s_client)
+    if _resource_exists(
+        get_deployment,
+        name=name,
+        namespace=namespace,
+        k8s_client=k8s_client,
+    ):
         logger.info("Deployment already exists")
-    except Exception:
+    else:
         dep_body = create_deployment(
             name=name,
             bootstrap_server=bootstrap_server,
@@ -283,10 +289,14 @@ def create_registry_resources(
         )
 
     # Create the http service to access the Schema Registry REST API
-    try:
-        get_service(name=name, namespace=namespace, k8s_client=k8s_client)
+    if _resource_exists(
+        get_service,
+        name=name,
+        namespace=namespace,
+        k8s_client=k8s_client,
+    ):
         logger.info("Service already exists")
-    except Exception:
+    else:
         svc_body = create_service(
             name=name, service_type=config["service_type"]
         )
@@ -294,6 +304,23 @@ def create_registry_resources(
         k8s_core_v1_api.create_namespaced_service(
             body=svc_body, namespace=namespace
         )
+
+
+def _resource_exists(
+    getter: Callable[..., Any],
+    *,
+    name: str,
+    namespace: str,
+    k8s_client: Any,
+) -> bool:
+    """Check whether a Kubernetes resource exists."""
+    try:
+        getter(name=name, namespace=namespace, k8s_client=k8s_client)
+    except ApiException as e:
+        if e.status == 404:
+            return False
+        raise
+    return True
 
 
 def register_registry_name(name: str) -> None:
