@@ -22,11 +22,11 @@ spec:
           patternType: literal
         operation: All
         type: allow
-      # Allow all operations on the schema-registry* group
+      # Allow all operations on this Schema Registry cluster's group
       - resource:
           type: group
-          name: schema-registry
-          patternType: prefix
+          name: confluent-schema-registry
+          patternType: literal
         operation: All
         type: allow
       # Allow Describe on the __consumer_offsets topic

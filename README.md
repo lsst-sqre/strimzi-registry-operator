@@ -159,11 +159,11 @@ spec:
         operations:
           - All
         type: allow
-      # Allow all operations on the schema-registry* group
+      # Allow all operations on this Schema Registry cluster's group
       - resource:
           type: group
-          name: schema-registry
-          patternType: prefix
+          name: confluent-schema-registry
+          patternType: literal
         operations:
           - All
         type: allow
@@ -206,6 +206,7 @@ metadata:
 spec:
   strimziVersion: v1beta2
   listener: tls
+  groupId: confluent-schema-registry
 ```
 
 The section [StrimziSchemaRegistry configuration properties](#strimzischemaregistry-configuration-properties) describes the configuration properties for the `StrimziSchemaRegistry`.
@@ -244,6 +245,7 @@ spec:
   securityProtocol: tls
   compatibilityLevel: forward
   registryTopic: "registry-schemas"
+  groupId: confluent-schema-registry
   registryImage: confluentinc/cp-schema-registry
   registryImageTag: "8.0.0"
   replicas: 1
@@ -292,6 +294,15 @@ spec:
   Default is `registry-schemas`.
 
   See also the notes in the **Deploy a KafkaTopic** section above.
+
+- `groupId` is the Kafka consumer group ID used for leader election by the
+  Schema Registry cluster. All replicas in one Schema Registry cluster must
+  use the same value, and separate Schema Registry clusters using the same
+  Kafka cluster must use different values. Default is `schema-registry`.
+
+  See also: Schema Registry
+  [`schema.registry.group.id`](https://docs.confluent.io/platform/current/schema-registry/multidc.html#id3)
+  docs.
 
 ### Kubernetes configurations for the Schema Registry
 

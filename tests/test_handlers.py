@@ -143,6 +143,86 @@ def test_delete_registry_removes_cached_name() -> None:
     assert state.registry_names == set()
 
 
+def test_parse_registry_spec_group_id() -> None:
+    custom = createregistry.parse_registry_spec(
+        {"groupId": "custom-registry-group"}, "registry", Mock()
+    )
+    default = createregistry.parse_registry_spec({}, "registry", Mock())
+
+    assert custom["registry_group_id"] == "custom-registry-group"
+    assert default["registry_group_id"] == "schema-registry"
+
+
+@pytest.mark.parametrize(
+    ("spec", "expected_group_id"),
+    [
+        ({"groupId": "custom-registry-group"}, "custom-registry-group"),
+        ({}, "schema-registry"),
+    ],
+)
+def test_update_registry_group_id(
+    spec: dict[str, str],
+    expected_group_id: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state.cluster_name = "events"
+    k8s_client = Mock()
+    update_deployment_group_id = Mock()
+    monkeypatch.setattr(createregistry, "create_k8sclient", lambda: k8s_client)
+    monkeypatch.setattr(
+        createregistry,
+        "update_deployment_group_id",
+        update_deployment_group_id,
+    )
+
+    call_handler(
+        createregistry.update_registry_group_id,
+        spec=spec,
+        namespace="events",
+        name="registry",
+        logger=Mock(),
+        body={"metadata": {"labels": {"strimzi.io/cluster": "events"}}},
+    )
+
+    update_deployment_group_id.assert_called_once_with(
+        group_id=expected_group_id,
+        k8s_client=k8s_client,
+        name="registry",
+        namespace="events",
+    )
+
+
+def test_update_registry_group_id_ignores_different_cluster(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state.cluster_name = "events"
+    create_k8sclient = Mock()
+    monkeypatch.setattr(createregistry, "create_k8sclient", create_k8sclient)
+
+    call_handler(
+        createregistry.update_registry_group_id,
+        spec={"groupId": "custom-registry-group"},
+        namespace="events",
+        name="registry",
+        logger=Mock(),
+        body={"metadata": {"labels": {"strimzi.io/cluster": "other"}}},
+    )
+
+    create_k8sclient.assert_not_called()
+
+
+def test_update_registry_group_id_rejects_missing_cluster_label() -> None:
+    with pytest.raises(kopf.PermanentError):
+        call_handler(
+            createregistry.update_registry_group_id,
+            spec={"groupId": "custom-registry-group"},
+            namespace="events",
+            name="registry",
+            logger=Mock(),
+            body={"metadata": {}},
+        )
+
+
 @pytest.mark.parametrize("invalid_registry", ["missing", "different"])
 def test_cluster_ca_rotation_skips_untracked_registry(
     invalid_registry: str,
@@ -300,6 +380,7 @@ def registry_config() -> dict[str, Any]:
         "registry_compatibility_level": "forward",
         "security_protocol": "SSL",
         "registry_topic": "registry-schemas",
+        "registry_group_id": "schema-registry",
         "service_type": "ClusterIP",
     }
 

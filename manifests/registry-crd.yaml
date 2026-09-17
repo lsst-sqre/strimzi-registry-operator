@@ -57,6 +57,14 @@ spec:
                   description: >-
                     The name of the Kafka topic used by the Schema Registry to store
                     schemas. Default is `registry-schemas`.
+                groupId:
+                  type: string
+                  minLength: 1
+                  default: "schema-registry"
+                  description: >-
+                    The Kafka consumer group ID used by the Schema Registry
+                    cluster. All replicas of one Schema Registry cluster must
+                    use the same value. Default is `schema-registry`.
                 replicas:
                   type: integer
                   default: 1
