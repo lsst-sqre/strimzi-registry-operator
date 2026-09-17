@@ -9,6 +9,7 @@ import kopf
 
 __all__ = (
     "create_deployment",
+    "create_pod_disruption_budget",
     "create_service",
     "get_cluster_name",
     "get_kafka_bootstrap_server",
@@ -454,6 +455,39 @@ def create_service(
             "selector": {
                 "app": name,
             },
+        },
+    }
+
+
+def create_pod_disruption_budget(*, name: str) -> dict[str, Any]:
+    """Create a PodDisruptionBudget resource for the Schema Registry.
+
+    Parameters
+    ----------
+    name : `str`
+        Name of the StrimziSchemaRegistry, which is also used as the name of
+        the PodDisruptionBudget and to select the registry pods.
+
+    Returns
+    -------
+    pod_disruption_budget : `dict`
+        The PodDisruptionBudget resource.
+    """
+    return {
+        "apiVersion": "policy/v1",
+        "kind": "PodDisruptionBudget",
+        "metadata": {
+            "name": name,
+            "labels": {
+                "app.kubernetes.io/instance": name,
+                "app.kubernetes.io/managed-by": "strimzi-registry-operator",
+                "app.kubernetes.io/name": "strimzischemaregistry",
+                "app.kubernetes.io/part-of": name,
+            },
+        },
+        "spec": {
+            "minAvailable": 1,
+            "selector": {"matchLabels": {"app": name}},
         },
     }
 

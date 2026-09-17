@@ -30,6 +30,9 @@ rules:
   - apiGroups: ["apps"]
     resources: ["deployments"]
     verbs: [get, list, watch, patch, create]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: [get, list, watch, patch, create]
   # Application: watching & handling for the custom resource we declare.
   - apiGroups: [roundtable.lsst.codes]
     resources: [strimzischemaregistries]
