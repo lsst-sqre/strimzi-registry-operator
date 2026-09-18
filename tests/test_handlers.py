@@ -330,9 +330,10 @@ def test_client_secret_rotation_skips_untracked_registry(
 
 def mock_registry_resource_dependencies(
     monkeypatch: pytest.MonkeyPatch,
-) -> tuple[Mock, Mock, Mock]:
+) -> tuple[Mock, Mock, Mock, Mock]:
     k8s_client = Mock()
     get_deployment = Mock()
+    get_pod_disruption_budget = Mock()
     get_service = Mock()
     monkeypatch.setattr(
         createregistry,
@@ -350,9 +351,19 @@ def mock_registry_resource_dependencies(
         Mock(return_value={"metadata": {"resourceVersion": "12345"}}),
     )
     monkeypatch.setattr(createregistry, "get_deployment", get_deployment)
+    monkeypatch.setattr(
+        createregistry,
+        "get_pod_disruption_budget",
+        get_pod_disruption_budget,
+    )
     monkeypatch.setattr(createregistry, "get_service", get_service)
     monkeypatch.setattr(kopf, "adopt", Mock())
-    return k8s_client, get_deployment, get_service
+    return (
+        k8s_client,
+        get_deployment,
+        get_pod_disruption_budget,
+        get_service,
+    )
 
 
 def registry_body() -> dict[str, Any]:
@@ -401,27 +412,45 @@ def create_registry_resources(k8s_client: Mock) -> None:
 def test_existing_registry_resources_are_not_created(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    k8s_client, _, _ = mock_registry_resource_dependencies(monkeypatch)
+    k8s_client, _, _, _ = mock_registry_resource_dependencies(monkeypatch)
 
     create_registry_resources(k8s_client)
 
     k8s_client.AppsV1Api.return_value.create_namespaced_deployment.assert_not_called()
+    k8s_client.PolicyV1Api.return_value.create_namespaced_pod_disruption_budget.assert_not_called()
     k8s_client.CoreV1Api.return_value.create_namespaced_service.assert_not_called()
 
 
 def test_missing_registry_resources_are_created(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    k8s_client, get_deployment, get_service = (
+    k8s_client, get_deployment, get_pod_disruption_budget, get_service = (
         mock_registry_resource_dependencies(monkeypatch)
     )
     get_deployment.side_effect = ApiException(status=404)
+    get_pod_disruption_budget.side_effect = ApiException(status=404)
     get_service.side_effect = ApiException(status=404)
 
     create_registry_resources(k8s_client)
 
     k8s_client.AppsV1Api.return_value.create_namespaced_deployment.assert_called_once()
+    k8s_client.PolicyV1Api.return_value.create_namespaced_pod_disruption_budget.assert_called_once()
     k8s_client.CoreV1Api.return_value.create_namespaced_service.assert_called_once()
+
+
+def test_missing_pod_disruption_budget_is_created(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, _, get_pod_disruption_budget, _ = (
+        mock_registry_resource_dependencies(monkeypatch)
+    )
+    get_pod_disruption_budget.side_effect = ApiException(status=404)
+
+    create_registry_resources(k8s_client)
+
+    k8s_client.AppsV1Api.return_value.create_namespaced_deployment.assert_not_called()
+    k8s_client.PolicyV1Api.return_value.create_namespaced_pod_disruption_budget.assert_called_once()
+    k8s_client.CoreV1Api.return_value.create_namespaced_service.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -429,6 +458,11 @@ def test_missing_registry_resources_are_created(
     [
         ("deployment", ApiException(status=403)),
         ("deployment", RuntimeError("deployment lookup failed")),
+        ("pod disruption budget", ApiException(status=500)),
+        (
+            "pod disruption budget",
+            RuntimeError("pod disruption budget lookup failed"),
+        ),
         ("service", ApiException(status=500)),
         ("service", RuntimeError("service lookup failed")),
     ],
@@ -438,11 +472,13 @@ def test_registry_resource_lookup_errors_are_propagated(
     error: Exception,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    k8s_client, get_deployment, get_service = (
+    k8s_client, get_deployment, get_pod_disruption_budget, get_service = (
         mock_registry_resource_dependencies(monkeypatch)
     )
     if resource == "deployment":
         get_deployment.side_effect = error
+    elif resource == "pod disruption budget":
+        get_pod_disruption_budget.side_effect = error
     else:
         get_service.side_effect = error
 
@@ -450,4 +486,5 @@ def test_registry_resource_lookup_errors_are_propagated(
         create_registry_resources(k8s_client)
 
     k8s_client.AppsV1Api.return_value.create_namespaced_deployment.assert_not_called()
+    k8s_client.PolicyV1Api.return_value.create_namespaced_pod_disruption_budget.assert_not_called()
     k8s_client.CoreV1Api.return_value.create_namespaced_service.assert_not_called()

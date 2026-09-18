@@ -19,6 +19,9 @@ dump_registry_diagnostics() {
     kubectl get \
         strimzischemaregistry/confluent-schema-registry \
         -n default -o yaml
+    kubectl get \
+        poddisruptionbudget/confluent-schema-registry \
+        -n default -o yaml
     kubectl get deployments,pods -n default -o wide
     kubectl describe deployment/confluent-schema-registry -n default
     kubectl logs -n default deployment/strimzi-registry-operator \
@@ -44,6 +47,9 @@ sleep 5s
 kubectl apply -f schema-registry.yaml -n default
 kubectl wait -n default --for=create \
     deployment/confluent-schema-registry --timeout=300s
+kubectl wait -n default --for=create \
+    poddisruptionbudget/confluent-schema-registry --timeout=300s
 kubectl get deployments -n default
+kubectl get poddisruptionbudgets -n default
 kubectl wait -n default deployment confluent-schema-registry \
     --for condition=Available=True --timeout=600s

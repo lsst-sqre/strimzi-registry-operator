@@ -20,6 +20,7 @@ from strimziregistryoperator import state
 from strimziregistryoperator.certprocessor import create_secret
 from strimziregistryoperator.deployments import (
     create_deployment,
+    create_pod_disruption_budget,
     create_service,
     get_cluster_name,
     get_kafka_bootstrap_server,
@@ -28,6 +29,7 @@ from strimziregistryoperator.deployments import (
 from strimziregistryoperator.k8s import (
     create_k8sclient,
     get_deployment,
+    get_pod_disruption_budget,
     get_secret,
     get_service,
 )
@@ -258,6 +260,7 @@ def create_registry_resources(
     k8s_apps_v1_api = k8s_client.AppsV1Api()
     k8s_core_v1_api = k8s_client.CoreV1Api()
     k8s_cr_api = k8s_client.CustomObjectsApi()
+    k8s_policy_v1_api = k8s_client.PolicyV1Api()
 
     cluster_name = get_cluster_name(body)
 
@@ -328,6 +331,22 @@ def create_registry_resources(
         kopf.adopt(dep_body, owner=cast("kopf.Body", body))
         k8s_apps_v1_api.create_namespaced_deployment(
             body=dep_body, namespace=namespace
+        )
+
+    # Ensure that voluntary disruptions preserve at least one available
+    # Schema Registry pod.
+    if _resource_exists(
+        get_pod_disruption_budget,
+        name=name,
+        namespace=namespace,
+        k8s_client=k8s_client,
+    ):
+        logger.info("PodDisruptionBudget already exists")
+    else:
+        pdb_body = create_pod_disruption_budget(name=name)
+        kopf.adopt(pdb_body, owner=cast("kopf.Body", body))
+        k8s_policy_v1_api.create_namespaced_pod_disruption_budget(
+            body=pdb_body, namespace=namespace
         )
 
     # Create the http service to access the Schema Registry REST API

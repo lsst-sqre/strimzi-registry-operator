@@ -9,6 +9,7 @@ import yaml
 
 from strimziregistryoperator.deployments import (
     create_deployment,
+    create_pod_disruption_budget,
     create_service,
     get_cluster_name,
     get_kafka_bootstrap_server,
@@ -172,6 +173,19 @@ def test_create_nodeport_service() -> None:
         name="confluent-schema-registry", service_type="NodePort"
     )
     assert resource["spec"]["type"] == "NodePort"
+
+
+def test_create_pod_disruption_budget() -> None:
+    """Create a PDB that keeps one Schema Registry replica available."""
+    resource = create_pod_disruption_budget(name="confluent-schema-registry")
+
+    assert resource["apiVersion"] == "policy/v1"
+    assert resource["kind"] == "PodDisruptionBudget"
+    assert resource["metadata"]["name"] == "confluent-schema-registry"
+    assert resource["spec"] == {
+        "minAvailable": 1,
+        "selector": {"matchLabels": {"app": "confluent-schema-registry"}},
+    }
 
 
 def get_env_value(env: list[dict[str, str]], name: str) -> str | None:
