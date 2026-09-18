@@ -13,6 +13,7 @@ from strimziregistryoperator.deployments import (
     get_cluster_name,
     get_kafka_bootstrap_server,
     update_deployment,
+    update_deployment_group_id,
 )
 
 
@@ -201,6 +202,7 @@ def test_create_deployment_configurations() -> None:
         compatibility_level="backward",
         security_protocol="SSL",
         registry_topic="custom-topic",
+        registry_group_id="custom-registry-group",
     )
     assert dep_body["spec"]["template"]["spec"]["containers"][0]["image"] == (
         f"{registry_image}:{registry_image_tag}"
@@ -219,6 +221,10 @@ def test_create_deployment_configurations() -> None:
     assert (
         get_env_value(env, "SCHEMA_REGISTRY_KAFKASTORE_TOPIC")
         == "custom-topic"
+    )
+    assert (
+        get_env_value(env, "SCHEMA_REGISTRY_SCHEMA_REGISTRY_GROUP_ID")
+        == "custom-registry-group"
     )
 
     assert "resources" in dep_body["spec"]["template"]["spec"]["containers"][0]
@@ -246,6 +252,7 @@ def test_create_deployment_resource_settings() -> None:
         compatibility_level="forward",
         security_protocol="SSL",
         registry_topic="custom-topic",
+        registry_group_id="custom-registry-group",
     )
     resources = dep_body["spec"]["template"]["spec"]["containers"][0][
         "resources"
@@ -283,6 +290,46 @@ def test_update_deployment() -> None:
     assert deployment.metadata.annotations == {"existing": "annotation"}
     apps_api.patch_namespaced_deployment.assert_called_once_with(
         name="example-server", namespace="events", body=deployment
+    )
+
+
+def test_update_deployment_group_id() -> None:
+    apps_api = Mock()
+    k8s_client = Mock()
+    k8s_client.AppsV1Api.return_value = apps_api
+
+    update_deployment_group_id(
+        group_id="custom-registry-group",
+        k8s_client=k8s_client,
+        name="example-server",
+        namespace="events",
+    )
+
+    apps_api.patch_namespaced_deployment.assert_called_once_with(
+        name="example-server",
+        namespace="events",
+        body={
+            "spec": {
+                "template": {
+                    "spec": {
+                        "containers": [
+                            {
+                                "name": "server",
+                                "env": [
+                                    {
+                                        "name": (
+                                            "SCHEMA_REGISTRY_"
+                                            "SCHEMA_REGISTRY_GROUP_ID"
+                                        ),
+                                        "value": "custom-registry-group",
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                }
+            }
+        },
     )
 
 

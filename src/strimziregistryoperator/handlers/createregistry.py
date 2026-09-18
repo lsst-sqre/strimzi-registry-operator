@@ -7,6 +7,7 @@ __all__ = (
     "get_nullable",
     "parse_registry_spec",
     "register_registry_name",
+    "update_registry_group_id",
 )
 
 from collections.abc import Callable
@@ -22,6 +23,7 @@ from strimziregistryoperator.deployments import (
     create_service,
     get_cluster_name,
     get_kafka_bootstrap_server,
+    update_deployment_group_id,
 )
 from strimziregistryoperator.k8s import (
     create_k8sclient,
@@ -107,6 +109,44 @@ def delete_registry(*, name: str, **kwargs: Any) -> None:
     state.registry_names.discard(name)
 
 
+@kopf.on.update(  # type: ignore[arg-type]
+    "roundtable.lsst.codes",
+    "v1beta1",
+    "strimzischemaregistries",
+    field="spec.groupId",
+)
+def update_registry_group_id(
+    *,
+    spec: dict[str, Any],
+    namespace: str,
+    name: str,
+    logger: Any,
+    body: dict[str, Any],
+    **kwargs: Any,
+) -> None:
+    """Update the group ID on an existing Schema Registry deployment."""
+    cluster_name = get_cluster_name(body)
+    if cluster_name is None:
+        raise kopf.PermanentError(
+            "Missing required label strimzi.io/cluster on "
+            "StrimziSchemaRegistry."
+        )
+    if cluster_name != state.cluster_name:
+        logger.info(
+            f"Ignoring StrimziSchemaRegistry {name} for Kafka cluster "
+            f"{cluster_name}."
+        )
+        return
+
+    k8s_client = create_k8sclient()
+    update_deployment_group_id(
+        group_id=spec.get("groupId", "schema-registry"),
+        k8s_client=k8s_client,
+        name=name,
+        namespace=namespace,
+    )
+
+
 def parse_registry_spec(
     spec: dict[str, Any], name: str, logger: Any
 ) -> dict[str, Any]:
@@ -159,6 +199,7 @@ def parse_registry_spec(
         ),
         "security_protocol": spec.get("securityProtocol", "SSL"),
         "registry_topic": spec.get("registryTopic", "registry-schemas"),
+        "registry_group_id": spec.get("groupId", "schema-registry"),
     }
 
 
@@ -281,6 +322,7 @@ def create_registry_resources(
             compatibility_level=config["registry_compatibility_level"],
             security_protocol=config["security_protocol"],
             registry_topic=config["registry_topic"],
+            registry_group_id=config["registry_group_id"],
         )
         # Set the StrimziSchemaRegistry as the owner
         kopf.adopt(dep_body, owner=cast("kopf.Body", body))

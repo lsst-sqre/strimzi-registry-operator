@@ -7,4 +7,5 @@ metadata:
 spec:
   strimziVersion: v1beta2
   listener: tls
+  groupId: confluent-schema-registry
   serviceType: NodePort

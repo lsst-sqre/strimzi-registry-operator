@@ -13,6 +13,7 @@ __all__ = (
     "get_cluster_name",
     "get_kafka_bootstrap_server",
     "update_deployment",
+    "update_deployment_group_id",
 )
 
 
@@ -146,6 +147,7 @@ def create_deployment(
     compatibility_level: str,
     security_protocol: str,
     registry_topic: str,
+    registry_group_id: str,
 ) -> dict[str, Any]:
     """Create the JSON resource for a Deployment of the Confluence Schema
     Registry.
@@ -192,6 +194,8 @@ def create_deployment(
     registry_topic : `str`
         The name of the Kafka topic used by the Schema Registry to store
         schemas.
+    registry_group_id : `str`
+        The Kafka consumer group ID used by the Schema Registry cluster.
 
     Returns
     -------
@@ -212,6 +216,7 @@ def create_deployment(
         compatibility_level=compatibility_level,
         security_protocol=security_protocol,
         registry_topic=registry_topic,
+        registry_group_id=registry_group_id,
     )
 
     # The pod template
@@ -263,6 +268,7 @@ def create_container_spec(
     compatibility_level: str,
     security_protocol: str,
     registry_topic: str,
+    registry_group_id: str,
 ) -> dict[str, Any]:
     """Create the container spec for the Schema Registry deployment.
 
@@ -300,6 +306,8 @@ def create_container_spec(
     registry_topic : `str`
         The name of the Kafka topic used by the Schema Registry to store
         schemas.
+    registry_group_id : `str`
+        The Kafka consumer group ID used by the Schema Registry cluster.
     """
     registry_env = [
         {
@@ -323,6 +331,10 @@ def create_container_spec(
         {
             "name": "SCHEMA_REGISTRY_KAFKASTORE_TOPIC",
             "value": registry_topic,
+        },
+        {
+            "name": "SCHEMA_REGISTRY_SCHEMA_REGISTRY_GROUP_ID",
+            "value": registry_group_id,
         },
         {
             "name": "SCHEMA_REGISTRY_KAFKASTORE_SSL_KEYSTORE_LOCATION",
@@ -468,6 +480,47 @@ def update_deployment(
     apps_api = k8s_client.AppsV1Api()
     apps_api.patch_namespaced_deployment(
         name=name, namespace=namespace, body=deployment
+    )
+
+
+def update_deployment_group_id(
+    *,
+    group_id: str,
+    k8s_client: Any,
+    name: str,
+    namespace: str,
+) -> None:
+    """Update the Schema Registry group ID on an existing deployment.
+
+    Changing the environment variable in the pod template causes Kubernetes
+    to perform a rolling update of the Schema Registry pods.
+    """
+    patch = {
+        "spec": {
+            "template": {
+                "spec": {
+                    "containers": [
+                        {
+                            "name": "server",
+                            "env": [
+                                {
+                                    "name": (
+                                        "SCHEMA_REGISTRY_"
+                                        "SCHEMA_REGISTRY_GROUP_ID"
+                                    ),
+                                    "value": group_id,
+                                }
+                            ],
+                        }
+                    ]
+                }
+            }
+        }
+    }
+
+    apps_api = k8s_client.AppsV1Api()
+    apps_api.patch_namespaced_deployment(
+        name=name, namespace=namespace, body=patch
     )
 
 
