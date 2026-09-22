@@ -153,6 +153,23 @@ def test_parse_registry_spec_group_id() -> None:
     assert default["registry_group_id"] == "schema-registry"
 
 
+@pytest.mark.parametrize(("spec", "expected"), [({}, 2), ({"replicas": 1}, 1)])
+def test_parse_registry_spec_replicas(
+    spec: dict[str, int], expected: int
+) -> None:
+    config = createregistry.parse_registry_spec(spec, "registry", Mock())
+
+    assert config["registry_replicas"] == expected
+
+
+@pytest.mark.parametrize("replicas", [0, -1])
+def test_parse_registry_spec_rejects_invalid_replicas(replicas: int) -> None:
+    with pytest.raises(kopf.PermanentError, match="at least one replica"):
+        createregistry.parse_registry_spec(
+            {"replicas": replicas}, "registry", Mock()
+        )
+
+
 @pytest.mark.parametrize(
     ("spec", "expected_group_id"),
     [

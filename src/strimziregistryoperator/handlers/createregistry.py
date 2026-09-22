@@ -183,6 +183,12 @@ def parse_registry_spec(
             f"using {listener_name}."
         )
 
+    registry_replicas = spec.get("replicas", 2)
+    if registry_replicas < 1:
+        raise kopf.PermanentError(
+            f"StrimziSchemaRegistry {name} must have at least one replica."
+        )
+
     return {
         "strimzi_api_version": strimzi_api_version,
         "listener_name": listener_name,
@@ -191,7 +197,7 @@ def parse_registry_spec(
             "registryImage", "confluentinc/cp-schema-registry"
         ),
         "registry_image_tag": spec.get("registryImageTag", "8.0.0"),
-        "registry_replicas": spec.get("replicas", 1),
+        "registry_replicas": registry_replicas,
         "registry_cpu_limit": get_nullable(spec, "cpuLimit"),
         "registry_cpu_request": get_nullable(spec, "cpuRequest"),
         "registry_mem_limit": get_nullable(spec, "memoryLimit"),

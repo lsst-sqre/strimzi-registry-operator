@@ -248,7 +248,7 @@ spec:
   groupId: confluent-schema-registry
   registryImage: confluentinc/cp-schema-registry
   registryImageTag: "8.0.0"
-  replicas: 1
+  replicas: 2
   serviceType: ClusterIP
   cpuLimit: ""
   cpuRequest: ""
@@ -314,7 +314,8 @@ spec:
   Default is `8.0.0`.
 
 - `replicas` is the number of replicas for the Schema Registry deployment.
-  Default is 1.
+  Default is 2. Set this to 1 for a non-high-availability deployment that may
+  be temporarily unavailable during cluster maintenance.
 
 - `serviceType` is the type of service to create for the registry. Default is ClusterIP. Can be NodePort to publish the registry externally.
 
