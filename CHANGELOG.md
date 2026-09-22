@@ -1,5 +1,11 @@
 # Change log
 
+## Unreleased
+
+- Schema Registry deployments now default to two replicas and use a
+  PodDisruptionBudget when configured with two or more replicas. Explicit
+  single-replica deployments remain supported without a PodDisruptionBudget.
+
 ## 0.7.1 (2025-09-29)
 
 -  Publish a multi-platform image (amd64 + arm64) so it “just works” anywhere.
