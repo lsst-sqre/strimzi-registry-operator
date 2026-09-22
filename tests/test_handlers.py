@@ -240,6 +240,121 @@ def test_update_registry_group_id_rejects_missing_cluster_label() -> None:
         )
 
 
+@pytest.mark.parametrize("replicas", [1, 2])
+def test_update_registry_replicas(
+    replicas: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state.cluster_name = "events"
+    k8s_client = Mock()
+    logger = Mock()
+    body = {"metadata": {"labels": {"strimzi.io/cluster": "events"}}}
+    calls: list[str] = []
+    update_deployment_replicas = Mock(
+        side_effect=lambda **kwargs: calls.append("deployment")
+    )
+    reconcile_pod_disruption_budget = Mock(
+        side_effect=lambda **kwargs: calls.append("pdb")
+    )
+    monkeypatch.setattr(createregistry, "create_k8sclient", lambda: k8s_client)
+    monkeypatch.setattr(
+        createregistry,
+        "update_deployment_replicas",
+        update_deployment_replicas,
+    )
+    monkeypatch.setattr(
+        createregistry,
+        "reconcile_pod_disruption_budget",
+        reconcile_pod_disruption_budget,
+    )
+
+    call_handler(
+        createregistry.update_registry_replicas,
+        spec={"replicas": replicas},
+        namespace="events",
+        name="registry",
+        logger=logger,
+        body=body,
+    )
+
+    update_deployment_replicas.assert_called_once_with(
+        replicas=replicas,
+        k8s_client=k8s_client,
+        name="registry",
+        namespace="events",
+    )
+    reconcile_pod_disruption_budget.assert_called_once_with(
+        replicas=replicas,
+        name="registry",
+        namespace="events",
+        k8s_client=k8s_client,
+        body=body,
+        logger=logger,
+    )
+    assert calls == ["deployment", "pdb"]
+
+
+def test_update_registry_replicas_ignores_different_cluster(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state.cluster_name = "events"
+    create_k8sclient = Mock()
+    monkeypatch.setattr(createregistry, "create_k8sclient", create_k8sclient)
+
+    call_handler(
+        createregistry.update_registry_replicas,
+        spec={"replicas": 2},
+        namespace="events",
+        name="registry",
+        logger=Mock(),
+        body={"metadata": {"labels": {"strimzi.io/cluster": "other"}}},
+    )
+
+    create_k8sclient.assert_not_called()
+
+
+def test_update_registry_replicas_rejects_missing_cluster_label() -> None:
+    with pytest.raises(kopf.PermanentError):
+        call_handler(
+            createregistry.update_registry_replicas,
+            spec={"replicas": 2},
+            namespace="events",
+            name="registry",
+            logger=Mock(),
+            body={"metadata": {}},
+        )
+
+
+def test_update_registry_replicas_propagates_deployment_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state.cluster_name = "events"
+    monkeypatch.setattr(createregistry, "create_k8sclient", Mock())
+    monkeypatch.setattr(
+        createregistry,
+        "update_deployment_replicas",
+        Mock(side_effect=ApiException(status=500)),
+    )
+    reconcile_pod_disruption_budget = Mock()
+    monkeypatch.setattr(
+        createregistry,
+        "reconcile_pod_disruption_budget",
+        reconcile_pod_disruption_budget,
+    )
+
+    with pytest.raises(ApiException) as excinfo:
+        call_handler(
+            createregistry.update_registry_replicas,
+            spec={"replicas": 2},
+            namespace="events",
+            name="registry",
+            logger=Mock(),
+            body={"metadata": {"labels": {"strimzi.io/cluster": "events"}}},
+        )
+
+    assert excinfo.value.status == 500
+    reconcile_pod_disruption_budget.assert_not_called()
+
+
 @pytest.mark.parametrize("invalid_registry", ["missing", "different"])
 def test_cluster_ca_rotation_skips_untracked_registry(
     invalid_registry: str,

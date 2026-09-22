@@ -9,6 +9,7 @@ __all__ = (
     "reconcile_pod_disruption_budget",
     "register_registry_name",
     "update_registry_group_id",
+    "update_registry_replicas",
 )
 
 from collections.abc import Callable
@@ -26,6 +27,7 @@ from strimziregistryoperator.deployments import (
     get_cluster_name,
     get_kafka_bootstrap_server,
     update_deployment_group_id,
+    update_deployment_replicas,
 )
 from strimziregistryoperator.k8s import (
     create_k8sclient,
@@ -150,6 +152,53 @@ def update_registry_group_id(
     )
 
 
+@kopf.on.update(  # type: ignore[arg-type]
+    "roundtable.lsst.codes",
+    "v1beta1",
+    "strimzischemaregistries",
+    field="spec.replicas",
+)
+def update_registry_replicas(
+    *,
+    spec: dict[str, Any],
+    namespace: str,
+    name: str,
+    logger: Any,
+    body: dict[str, Any],
+    **kwargs: Any,
+) -> None:
+    """Update replicas and disruption protection for a Schema Registry."""
+    cluster_name = get_cluster_name(body)
+    if cluster_name is None:
+        raise kopf.PermanentError(
+            "Missing required label strimzi.io/cluster on "
+            "StrimziSchemaRegistry."
+        )
+    if cluster_name != state.cluster_name:
+        logger.info(
+            f"Ignoring StrimziSchemaRegistry {name} for Kafka cluster "
+            f"{cluster_name}."
+        )
+        return
+
+    replicas = get_registry_replicas(spec, name)
+    k8s_client = create_k8sclient()
+    update_deployment_replicas(
+        replicas=replicas,
+        k8s_client=k8s_client,
+        name=name,
+        namespace=namespace,
+    )
+    reconcile_pod_disruption_budget(
+        replicas=replicas,
+        name=name,
+        namespace=namespace,
+        k8s_client=k8s_client,
+        body=body,
+        logger=logger,
+    )
+
+
 def parse_registry_spec(
     spec: dict[str, Any], name: str, logger: Any
 ) -> dict[str, Any]:
@@ -184,11 +233,7 @@ def parse_registry_spec(
             f"using {listener_name}."
         )
 
-    registry_replicas = spec.get("replicas", 2)
-    if registry_replicas < 1:
-        raise kopf.PermanentError(
-            f"StrimziSchemaRegistry {name} must have at least one replica."
-        )
+    registry_replicas = get_registry_replicas(spec, name)
 
     return {
         "strimzi_api_version": strimzi_api_version,
@@ -210,6 +255,16 @@ def parse_registry_spec(
         "registry_topic": spec.get("registryTopic", "registry-schemas"),
         "registry_group_id": spec.get("groupId", "schema-registry"),
     }
+
+
+def get_registry_replicas(spec: dict[str, Any], name: str) -> int:
+    """Get and validate the desired Schema Registry replica count."""
+    replicas = spec.get("replicas", 2)
+    if replicas < 1:
+        raise kopf.PermanentError(
+            f"StrimziSchemaRegistry {name} must have at least one replica."
+        )
+    return replicas
 
 
 def get_nullable(spec: dict[str, str], key: str) -> str | None:

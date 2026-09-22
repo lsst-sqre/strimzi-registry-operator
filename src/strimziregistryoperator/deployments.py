@@ -15,6 +15,7 @@ __all__ = (
     "get_kafka_bootstrap_server",
     "update_deployment",
     "update_deployment_group_id",
+    "update_deployment_replicas",
 )
 
 
@@ -552,6 +553,21 @@ def update_deployment_group_id(
         }
     }
 
+    apps_api = k8s_client.AppsV1Api()
+    apps_api.patch_namespaced_deployment(
+        name=name, namespace=namespace, body=patch
+    )
+
+
+def update_deployment_replicas(
+    *,
+    replicas: int,
+    k8s_client: Any,
+    name: str,
+    namespace: str,
+) -> None:
+    """Update the desired replica count on a Schema Registry deployment."""
+    patch = {"spec": {"replicas": replicas}}
     apps_api = k8s_client.AppsV1Api()
     apps_api.patch_namespaced_deployment(
         name=name, namespace=namespace, body=patch

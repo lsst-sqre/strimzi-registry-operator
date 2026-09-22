@@ -15,6 +15,7 @@ from strimziregistryoperator.deployments import (
     get_kafka_bootstrap_server,
     update_deployment,
     update_deployment_group_id,
+    update_deployment_replicas,
 )
 
 
@@ -344,6 +345,25 @@ def test_update_deployment_group_id() -> None:
                 }
             }
         },
+    )
+
+
+def test_update_deployment_replicas() -> None:
+    apps_api = Mock()
+    k8s_client = Mock()
+    k8s_client.AppsV1Api.return_value = apps_api
+
+    update_deployment_replicas(
+        replicas=2,
+        k8s_client=k8s_client,
+        name="example-server",
+        namespace="events",
+    )
+
+    apps_api.patch_namespaced_deployment.assert_called_once_with(
+        name="example-server",
+        namespace="events",
+        body={"spec": {"replicas": 2}},
     )
 
 
