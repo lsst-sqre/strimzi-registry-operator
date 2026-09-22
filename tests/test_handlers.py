@@ -541,6 +541,58 @@ def create_registry_resources(k8s_client: Mock, *, replicas: int = 2) -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("replicas", "pdb_state"),
+    [(1, "present"), (1, "missing"), (2, "missing"), (2, "present")],
+)
+def test_resume_registry_reconciles_availability(
+    replicas: int,
+    pdb_state: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state.cluster_name = "events"
+    k8s_client, _, get_pod_disruption_budget, _ = (
+        mock_registry_resource_dependencies(monkeypatch)
+    )
+    if pdb_state == "missing":
+        get_pod_disruption_budget.side_effect = ApiException(status=404)
+    update_deployment_replicas = Mock()
+    monkeypatch.setattr(createregistry, "create_k8sclient", lambda: k8s_client)
+    monkeypatch.setattr(
+        createregistry,
+        "update_deployment_replicas",
+        update_deployment_replicas,
+    )
+
+    call_handler(
+        createregistry.resume_registry,
+        spec={"replicas": replicas},
+        namespace="events",
+        name="registry",
+        logger=Mock(),
+        body=registry_body(),
+    )
+
+    update_deployment_replicas.assert_called_once_with(
+        replicas=replicas,
+        k8s_client=k8s_client,
+        name="registry",
+        namespace="events",
+    )
+    policy_api = k8s_client.PolicyV1Api.return_value
+    if replicas == 1 and pdb_state == "present":
+        policy_api.delete_namespaced_pod_disruption_budget.assert_called_once_with(
+            name="registry", namespace="events"
+        )
+        policy_api.create_namespaced_pod_disruption_budget.assert_not_called()
+    elif replicas >= 2 and pdb_state == "missing":
+        policy_api.create_namespaced_pod_disruption_budget.assert_called_once()
+        policy_api.delete_namespaced_pod_disruption_budget.assert_not_called()
+    else:
+        policy_api.create_namespaced_pod_disruption_budget.assert_not_called()
+        policy_api.delete_namespaced_pod_disruption_budget.assert_not_called()
+
+
 def test_existing_registry_resources_are_not_created(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

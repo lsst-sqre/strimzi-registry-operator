@@ -8,6 +8,7 @@ __all__ = (
     "parse_registry_spec",
     "reconcile_pod_disruption_budget",
     "register_registry_name",
+    "resume_registry",
     "update_registry_group_id",
     "update_registry_replicas",
 )
@@ -168,6 +169,46 @@ def update_registry_replicas(
     **kwargs: Any,
 ) -> None:
     """Update replicas and disruption protection for a Schema Registry."""
+    _reconcile_registry_availability(
+        spec=spec,
+        name=name,
+        namespace=namespace,
+        body=body,
+        logger=logger,
+    )
+
+
+@kopf.on.resume(  # type: ignore[arg-type]
+    "roundtable.lsst.codes", "v1beta1", "strimzischemaregistries"
+)
+def resume_registry(
+    *,
+    spec: dict[str, Any],
+    namespace: str,
+    name: str,
+    logger: Any,
+    body: dict[str, Any],
+    **kwargs: Any,
+) -> None:
+    """Restore replica and disruption-budget state when the operator starts."""
+    _reconcile_registry_availability(
+        spec=spec,
+        namespace=namespace,
+        name=name,
+        logger=logger,
+        body=body,
+    )
+
+
+def _reconcile_registry_availability(
+    *,
+    spec: dict[str, Any],
+    namespace: str,
+    name: str,
+    logger: Any,
+    body: dict[str, Any],
+) -> None:
+    """Reconcile replicas and disruption protection for a registry."""
     cluster_name = get_cluster_name(body)
     if cluster_name is None:
         raise kopf.PermanentError(
