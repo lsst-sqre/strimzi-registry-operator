@@ -396,11 +396,11 @@ def registry_body() -> dict[str, Any]:
     }
 
 
-def registry_config() -> dict[str, Any]:
+def registry_config(*, replicas: int = 2) -> dict[str, Any]:
     return {
         "registry_image": "confluentinc/cp-schema-registry",
         "registry_image_tag": "8.0.0",
-        "registry_replicas": 1,
+        "registry_replicas": replicas,
         "registry_cpu_limit": None,
         "registry_cpu_request": None,
         "registry_mem_limit": None,
@@ -413,7 +413,7 @@ def registry_config() -> dict[str, Any]:
     }
 
 
-def create_registry_resources(k8s_client: Mock) -> None:
+def create_registry_resources(k8s_client: Mock, *, replicas: int = 2) -> None:
     createregistry.create_registry_resources(
         name="registry",
         namespace="events",
@@ -422,7 +422,7 @@ def create_registry_resources(k8s_client: Mock) -> None:
         k8s_client=k8s_client,
         body=registry_body(),
         logger=Mock(),
-        config=registry_config(),
+        config=registry_config(replicas=replicas),
     )
 
 
@@ -468,6 +468,60 @@ def test_missing_pod_disruption_budget_is_created(
     k8s_client.AppsV1Api.return_value.create_namespaced_deployment.assert_not_called()
     k8s_client.PolicyV1Api.return_value.create_namespaced_pod_disruption_budget.assert_called_once()
     k8s_client.CoreV1Api.return_value.create_namespaced_service.assert_not_called()
+
+
+def test_single_replica_registry_has_no_pod_disruption_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, _, get_pod_disruption_budget, _ = (
+        mock_registry_resource_dependencies(monkeypatch)
+    )
+    get_pod_disruption_budget.side_effect = ApiException(status=404)
+
+    create_registry_resources(k8s_client, replicas=1)
+
+    policy_api = k8s_client.PolicyV1Api.return_value
+    policy_api.create_namespaced_pod_disruption_budget.assert_not_called()
+    policy_api.delete_namespaced_pod_disruption_budget.assert_not_called()
+
+
+def test_single_replica_registry_removes_pod_disruption_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, _, _, _ = mock_registry_resource_dependencies(monkeypatch)
+
+    create_registry_resources(k8s_client, replicas=1)
+
+    k8s_client.PolicyV1Api.return_value.delete_namespaced_pod_disruption_budget.assert_called_once_with(
+        name="registry", namespace="events"
+    )
+
+
+def test_pod_disruption_budget_delete_ignores_missing_resource(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, _, _, _ = mock_registry_resource_dependencies(monkeypatch)
+    policy_api = k8s_client.PolicyV1Api.return_value
+    policy_api.delete_namespaced_pod_disruption_budget.side_effect = (
+        ApiException(status=404)
+    )
+
+    create_registry_resources(k8s_client, replicas=1)
+
+
+def test_pod_disruption_budget_delete_errors_are_propagated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, _, _, _ = mock_registry_resource_dependencies(monkeypatch)
+    policy_api = k8s_client.PolicyV1Api.return_value
+    policy_api.delete_namespaced_pod_disruption_budget.side_effect = (
+        ApiException(status=500)
+    )
+
+    with pytest.raises(ApiException) as excinfo:
+        create_registry_resources(k8s_client, replicas=1)
+
+    assert excinfo.value.status == 500
 
 
 @pytest.mark.parametrize(

@@ -6,6 +6,7 @@ __all__ = (
     "delete_registry",
     "get_nullable",
     "parse_registry_spec",
+    "reconcile_pod_disruption_budget",
     "register_registry_name",
     "update_registry_group_id",
 )
@@ -266,7 +267,6 @@ def create_registry_resources(
     k8s_apps_v1_api = k8s_client.AppsV1Api()
     k8s_core_v1_api = k8s_client.CoreV1Api()
     k8s_cr_api = k8s_client.CustomObjectsApi()
-    k8s_policy_v1_api = k8s_client.PolicyV1Api()
 
     cluster_name = get_cluster_name(body)
 
@@ -339,21 +339,14 @@ def create_registry_resources(
             body=dep_body, namespace=namespace
         )
 
-    # Ensure that voluntary disruptions preserve at least one available
-    # Schema Registry pod.
-    if _resource_exists(
-        get_pod_disruption_budget,
+    reconcile_pod_disruption_budget(
+        replicas=config["registry_replicas"],
         name=name,
         namespace=namespace,
         k8s_client=k8s_client,
-    ):
-        logger.info("PodDisruptionBudget already exists")
-    else:
-        pdb_body = create_pod_disruption_budget(name=name)
-        kopf.adopt(pdb_body, owner=cast("kopf.Body", body))
-        k8s_policy_v1_api.create_namespaced_pod_disruption_budget(
-            body=pdb_body, namespace=namespace
-        )
+        body=body,
+        logger=logger,
+    )
 
     # Create the http service to access the Schema Registry REST API
     if _resource_exists(
@@ -371,6 +364,52 @@ def create_registry_resources(
         k8s_core_v1_api.create_namespaced_service(
             body=svc_body, namespace=namespace
         )
+
+
+def reconcile_pod_disruption_budget(
+    *,
+    replicas: int,
+    name: str,
+    namespace: str,
+    k8s_client: Any,
+    body: dict[str, Any],
+    logger: Any,
+) -> None:
+    """Reconcile the PodDisruptionBudget for a Schema Registry.
+
+    A multi-replica registry gets a PodDisruptionBudget that preserves one
+    available replica. A single-replica registry does not get a budget because
+    that would prevent voluntary eviction of its only pod.
+    """
+    try:
+        get_pod_disruption_budget(
+            name=name, namespace=namespace, k8s_client=k8s_client
+        )
+        pdb_exists = True
+    except ApiException as e:
+        if e.status == 404:
+            pdb_exists = False
+        else:
+            raise
+
+    policy_api = k8s_client.PolicyV1Api()
+    if replicas >= 2:
+        if pdb_exists:
+            logger.info("PodDisruptionBudget already exists")
+            return
+        pdb_body = create_pod_disruption_budget(name=name)
+        kopf.adopt(pdb_body, owner=cast("kopf.Body", body))
+        policy_api.create_namespaced_pod_disruption_budget(
+            body=pdb_body, namespace=namespace
+        )
+    elif pdb_exists:
+        try:
+            policy_api.delete_namespaced_pod_disruption_budget(
+                name=name, namespace=namespace
+            )
+        except ApiException as e:
+            if e.status != 404:
+                raise
 
 
 def _resource_exists(
