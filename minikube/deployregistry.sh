@@ -49,7 +49,14 @@ kubectl wait -n default --for=create \
     deployment/confluent-schema-registry --timeout=300s
 kubectl wait -n default --for=create \
     poddisruptionbudget/confluent-schema-registry --timeout=300s
-kubectl get deployments -n default
+kubectl rollout status -n default \
+    deployment/confluent-schema-registry --timeout=600s
+test "$(kubectl get -n default deployment/confluent-schema-registry \
+    -o jsonpath='{.spec.replicas}')" = "2"
+test "$(kubectl get -n default deployment/confluent-schema-registry \
+    -o jsonpath='{.status.availableReplicas}')" = "2"
+kubectl wait -n default \
+    poddisruptionbudget/confluent-schema-registry \
+    --for=jsonpath='{.status.disruptionsAllowed}'=1 --timeout=300s
+kubectl get deployments,pods -n default -o wide
 kubectl get poddisruptionbudgets -n default
-kubectl wait -n default deployment confluent-schema-registry \
-    --for condition=Available=True --timeout=600s
