@@ -6,8 +6,12 @@ __all__ = (
     "delete_registry",
     "get_nullable",
     "parse_registry_spec",
+    "reconcile_pod_disruption_budget",
     "register_registry_name",
+    "resume_registry",
     "update_registry_group_id",
+    "update_registry_pod_disruption_budget",
+    "update_registry_replicas",
 )
 
 from collections.abc import Callable
@@ -20,14 +24,17 @@ from strimziregistryoperator import state
 from strimziregistryoperator.certprocessor import create_secret
 from strimziregistryoperator.deployments import (
     create_deployment,
+    create_pod_disruption_budget,
     create_service,
     get_cluster_name,
     get_kafka_bootstrap_server,
     update_deployment_group_id,
+    update_deployment_replicas,
 )
 from strimziregistryoperator.k8s import (
     create_k8sclient,
     get_deployment,
+    get_pod_disruption_budget,
     get_secret,
     get_service,
 )
@@ -147,6 +154,120 @@ def update_registry_group_id(
     )
 
 
+@kopf.on.update(  # type: ignore[arg-type]
+    "roundtable.lsst.codes",
+    "v1beta1",
+    "strimzischemaregistries",
+    field="spec.replicas",
+)
+def update_registry_replicas(
+    *,
+    spec: dict[str, Any],
+    namespace: str,
+    name: str,
+    logger: Any,
+    body: dict[str, Any],
+    **kwargs: Any,
+) -> None:
+    """Update replicas and disruption protection for a Schema Registry."""
+    _reconcile_registry_availability(
+        spec=spec,
+        name=name,
+        namespace=namespace,
+        body=body,
+        logger=logger,
+    )
+
+
+@kopf.on.update(  # type: ignore[arg-type]
+    "roundtable.lsst.codes",
+    "v1beta1",
+    "strimzischemaregistries",
+    field="spec.podDisruptionBudgetEnabled",
+)
+def update_registry_pod_disruption_budget(
+    *,
+    spec: dict[str, Any],
+    namespace: str,
+    name: str,
+    logger: Any,
+    body: dict[str, Any],
+    **kwargs: Any,
+) -> None:
+    """Update disruption protection for a Schema Registry."""
+    _reconcile_registry_availability(
+        spec=spec,
+        name=name,
+        namespace=namespace,
+        body=body,
+        logger=logger,
+    )
+
+
+@kopf.on.resume(  # type: ignore[arg-type]
+    "roundtable.lsst.codes", "v1beta1", "strimzischemaregistries"
+)
+def resume_registry(
+    *,
+    spec: dict[str, Any],
+    namespace: str,
+    name: str,
+    logger: Any,
+    body: dict[str, Any],
+    **kwargs: Any,
+) -> None:
+    """Restore replica and disruption-budget state when the operator starts."""
+    _reconcile_registry_availability(
+        spec=spec,
+        namespace=namespace,
+        name=name,
+        logger=logger,
+        body=body,
+    )
+
+
+def _reconcile_registry_availability(
+    *,
+    spec: dict[str, Any],
+    namespace: str,
+    name: str,
+    logger: Any,
+    body: dict[str, Any],
+) -> None:
+    """Reconcile replicas and disruption protection for a registry."""
+    cluster_name = get_cluster_name(body)
+    if cluster_name is None:
+        raise kopf.PermanentError(
+            "Missing required label strimzi.io/cluster on "
+            "StrimziSchemaRegistry."
+        )
+    if cluster_name != state.cluster_name:
+        logger.info(
+            f"Ignoring StrimziSchemaRegistry {name} for Kafka cluster "
+            f"{cluster_name}."
+        )
+        return
+
+    replicas = get_registry_replicas(spec, name)
+    pdb_enabled = spec.get("podDisruptionBudgetEnabled", True)
+    k8s_client = create_k8sclient()
+    update_deployment_replicas(
+        replicas=replicas,
+        k8s_client=k8s_client,
+        name=name,
+        namespace=namespace,
+    )
+    reconcile_pod_disruption_budget(
+        replicas=replicas,
+        enabled=pdb_enabled,
+        name=name,
+        namespace=namespace,
+        k8s_client=k8s_client,
+        body=body,
+        logger=logger,
+    )
+
+
 def parse_registry_spec(
     spec: dict[str, Any], name: str, logger: Any
 ) -> dict[str, Any]:
@@ -181,6 +302,8 @@ def parse_registry_spec(
             f"using {listener_name}."
         )
 
+    registry_replicas = get_registry_replicas(spec, name)
+
     return {
         "strimzi_api_version": strimzi_api_version,
         "listener_name": listener_name,
@@ -189,7 +312,8 @@ def parse_registry_spec(
             "registryImage", "confluentinc/cp-schema-registry"
         ),
         "registry_image_tag": spec.get("registryImageTag", "8.0.0"),
-        "registry_replicas": spec.get("replicas", 1),
+        "registry_replicas": registry_replicas,
+        "registry_pdb_enabled": spec.get("podDisruptionBudgetEnabled", True),
         "registry_cpu_limit": get_nullable(spec, "cpuLimit"),
         "registry_cpu_request": get_nullable(spec, "cpuRequest"),
         "registry_mem_limit": get_nullable(spec, "memoryLimit"),
@@ -201,6 +325,16 @@ def parse_registry_spec(
         "registry_topic": spec.get("registryTopic", "registry-schemas"),
         "registry_group_id": spec.get("groupId", "schema-registry"),
     }
+
+
+def get_registry_replicas(spec: dict[str, Any], name: str) -> int:
+    """Get and validate the desired Schema Registry replica count."""
+    replicas = spec.get("replicas", 2)
+    if replicas < 1:
+        raise kopf.PermanentError(
+            f"StrimziSchemaRegistry {name} must have at least one replica."
+        )
+    return replicas
 
 
 def get_nullable(spec: dict[str, str], key: str) -> str | None:
@@ -330,6 +464,16 @@ def create_registry_resources(
             body=dep_body, namespace=namespace
         )
 
+    reconcile_pod_disruption_budget(
+        replicas=config["registry_replicas"],
+        enabled=config["registry_pdb_enabled"],
+        name=name,
+        namespace=namespace,
+        k8s_client=k8s_client,
+        body=body,
+        logger=logger,
+    )
+
     # Create the http service to access the Schema Registry REST API
     if _resource_exists(
         get_service,
@@ -346,6 +490,53 @@ def create_registry_resources(
         k8s_core_v1_api.create_namespaced_service(
             body=svc_body, namespace=namespace
         )
+
+
+def reconcile_pod_disruption_budget(
+    *,
+    replicas: int,
+    enabled: bool,
+    name: str,
+    namespace: str,
+    k8s_client: Any,
+    body: dict[str, Any],
+    logger: Any,
+) -> None:
+    """Reconcile the PodDisruptionBudget for a Schema Registry.
+
+    An enabled, multi-replica registry gets a PodDisruptionBudget that
+    preserves one available replica. Disabled and single-replica registries do
+    not get a budget.
+    """
+    try:
+        get_pod_disruption_budget(
+            name=name, namespace=namespace, k8s_client=k8s_client
+        )
+        pdb_exists = True
+    except ApiException as e:
+        if e.status == 404:
+            pdb_exists = False
+        else:
+            raise
+
+    policy_api = k8s_client.PolicyV1Api()
+    if enabled and replicas >= 2:
+        if pdb_exists:
+            logger.info("PodDisruptionBudget already exists")
+            return
+        pdb_body = create_pod_disruption_budget(name=name)
+        kopf.adopt(pdb_body, owner=cast("kopf.Body", body))
+        policy_api.create_namespaced_pod_disruption_budget(
+            body=pdb_body, namespace=namespace
+        )
+    elif pdb_exists:
+        try:
+            policy_api.delete_namespaced_pod_disruption_budget(
+                name=name, namespace=namespace
+            )
+        except ApiException as e:
+            if e.status != 404:
+                raise
 
 
 def _resource_exists(

@@ -9,11 +9,13 @@ import yaml
 
 from strimziregistryoperator.deployments import (
     create_deployment,
+    create_pod_disruption_budget,
     create_service,
     get_cluster_name,
     get_kafka_bootstrap_server,
     update_deployment,
     update_deployment_group_id,
+    update_deployment_replicas,
 )
 
 
@@ -174,6 +176,19 @@ def test_create_nodeport_service() -> None:
     assert resource["spec"]["type"] == "NodePort"
 
 
+def test_create_pod_disruption_budget() -> None:
+    """Create a PDB that keeps one Schema Registry replica available."""
+    resource = create_pod_disruption_budget(name="confluent-schema-registry")
+
+    assert resource["apiVersion"] == "policy/v1"
+    assert resource["kind"] == "PodDisruptionBudget"
+    assert resource["metadata"]["name"] == "confluent-schema-registry"
+    assert resource["spec"] == {
+        "minAvailable": 1,
+        "selector": {"matchLabels": {"app": "confluent-schema-registry"}},
+    }
+
+
 def get_env_value(env: list[dict[str, str]], name: str) -> str | None:
     """Get the value of an environment variable in the container spec.env."""
     for item in env:
@@ -330,6 +345,25 @@ def test_update_deployment_group_id() -> None:
                 }
             }
         },
+    )
+
+
+def test_update_deployment_replicas() -> None:
+    apps_api = Mock()
+    k8s_client = Mock()
+    k8s_client.AppsV1Api.return_value = apps_api
+
+    update_deployment_replicas(
+        replicas=2,
+        k8s_client=k8s_client,
+        name="example-server",
+        namespace="events",
+    )
+
+    apps_api.patch_namespaced_deployment.assert_called_once_with(
+        name="example-server",
+        namespace="events",
+        body={"spec": {"replicas": 2}},
     )
 
 

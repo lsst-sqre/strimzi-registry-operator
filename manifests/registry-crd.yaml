@@ -67,10 +67,17 @@ spec:
                     use the same value. Default is `schema-registry`.
                 replicas:
                   type: integer
-                  default: 1
+                  default: 2
+                  minimum: 1
                   description: >-
                     The number of Schema Registry replicas to deploy. Default
-                    is 1.
+                    is 2. Set to 1 for a non-high-availability deployment.
+                podDisruptionBudgetEnabled:
+                  type: boolean
+                  default: true
+                  description: >-
+                    Whether to create a PodDisruptionBudget for a Schema
+                    Registry with at least two replicas. Default is true.
                 cpuLimit:
                   type: string
                   default: ""

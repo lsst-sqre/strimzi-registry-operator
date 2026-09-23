@@ -153,6 +153,35 @@ def test_parse_registry_spec_group_id() -> None:
     assert default["registry_group_id"] == "schema-registry"
 
 
+@pytest.mark.parametrize(("spec", "expected"), [({}, 2), ({"replicas": 1}, 1)])
+def test_parse_registry_spec_replicas(
+    spec: dict[str, int], expected: int
+) -> None:
+    config = createregistry.parse_registry_spec(spec, "registry", Mock())
+
+    assert config["registry_replicas"] == expected
+
+
+@pytest.mark.parametrize(
+    ("spec", "expected_state"),
+    [({}, "enabled"), ({"podDisruptionBudgetEnabled": False}, "disabled")],
+)
+def test_parse_registry_spec_pod_disruption_budget(
+    spec: dict[str, bool], expected_state: str
+) -> None:
+    config = createregistry.parse_registry_spec(spec, "registry", Mock())
+
+    assert config["registry_pdb_enabled"] is (expected_state == "enabled")
+
+
+@pytest.mark.parametrize("replicas", [0, -1])
+def test_parse_registry_spec_rejects_invalid_replicas(replicas: int) -> None:
+    with pytest.raises(kopf.PermanentError, match="at least one replica"):
+        createregistry.parse_registry_spec(
+            {"replicas": replicas}, "registry", Mock()
+        )
+
+
 @pytest.mark.parametrize(
     ("spec", "expected_group_id"),
     [
@@ -221,6 +250,170 @@ def test_update_registry_group_id_rejects_missing_cluster_label() -> None:
             logger=Mock(),
             body={"metadata": {}},
         )
+
+
+@pytest.mark.parametrize("replicas", [1, 2])
+def test_update_registry_replicas(
+    replicas: int, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state.cluster_name = "events"
+    k8s_client = Mock()
+    logger = Mock()
+    body = {"metadata": {"labels": {"strimzi.io/cluster": "events"}}}
+    calls: list[str] = []
+    update_deployment_replicas = Mock(
+        side_effect=lambda **kwargs: calls.append("deployment")
+    )
+    reconcile_pod_disruption_budget = Mock(
+        side_effect=lambda **kwargs: calls.append("pdb")
+    )
+    monkeypatch.setattr(createregistry, "create_k8sclient", lambda: k8s_client)
+    monkeypatch.setattr(
+        createregistry,
+        "update_deployment_replicas",
+        update_deployment_replicas,
+    )
+    monkeypatch.setattr(
+        createregistry,
+        "reconcile_pod_disruption_budget",
+        reconcile_pod_disruption_budget,
+    )
+
+    call_handler(
+        createregistry.update_registry_replicas,
+        spec={"replicas": replicas},
+        namespace="events",
+        name="registry",
+        logger=logger,
+        body=body,
+    )
+
+    update_deployment_replicas.assert_called_once_with(
+        replicas=replicas,
+        k8s_client=k8s_client,
+        name="registry",
+        namespace="events",
+    )
+    reconcile_pod_disruption_budget.assert_called_once_with(
+        replicas=replicas,
+        enabled=True,
+        name="registry",
+        namespace="events",
+        k8s_client=k8s_client,
+        body=body,
+        logger=logger,
+    )
+    assert calls == ["deployment", "pdb"]
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_update_registry_pod_disruption_budget(
+    *, enabled: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state.cluster_name = "events"
+    k8s_client = Mock()
+    logger = Mock()
+    body = {"metadata": {"labels": {"strimzi.io/cluster": "events"}}}
+    update_deployment_replicas = Mock()
+    reconcile_pod_disruption_budget = Mock()
+    monkeypatch.setattr(createregistry, "create_k8sclient", lambda: k8s_client)
+    monkeypatch.setattr(
+        createregistry,
+        "update_deployment_replicas",
+        update_deployment_replicas,
+    )
+    monkeypatch.setattr(
+        createregistry,
+        "reconcile_pod_disruption_budget",
+        reconcile_pod_disruption_budget,
+    )
+
+    call_handler(
+        createregistry.update_registry_pod_disruption_budget,
+        spec={"replicas": 2, "podDisruptionBudgetEnabled": enabled},
+        namespace="events",
+        name="registry",
+        logger=logger,
+        body=body,
+    )
+
+    update_deployment_replicas.assert_called_once_with(
+        replicas=2,
+        k8s_client=k8s_client,
+        name="registry",
+        namespace="events",
+    )
+    reconcile_pod_disruption_budget.assert_called_once_with(
+        replicas=2,
+        enabled=enabled,
+        name="registry",
+        namespace="events",
+        k8s_client=k8s_client,
+        body=body,
+        logger=logger,
+    )
+
+
+def test_update_registry_replicas_ignores_different_cluster(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state.cluster_name = "events"
+    create_k8sclient = Mock()
+    monkeypatch.setattr(createregistry, "create_k8sclient", create_k8sclient)
+
+    call_handler(
+        createregistry.update_registry_replicas,
+        spec={"replicas": 2},
+        namespace="events",
+        name="registry",
+        logger=Mock(),
+        body={"metadata": {"labels": {"strimzi.io/cluster": "other"}}},
+    )
+
+    create_k8sclient.assert_not_called()
+
+
+def test_update_registry_replicas_rejects_missing_cluster_label() -> None:
+    with pytest.raises(kopf.PermanentError):
+        call_handler(
+            createregistry.update_registry_replicas,
+            spec={"replicas": 2},
+            namespace="events",
+            name="registry",
+            logger=Mock(),
+            body={"metadata": {}},
+        )
+
+
+def test_update_registry_replicas_propagates_deployment_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state.cluster_name = "events"
+    monkeypatch.setattr(createregistry, "create_k8sclient", Mock())
+    monkeypatch.setattr(
+        createregistry,
+        "update_deployment_replicas",
+        Mock(side_effect=ApiException(status=500)),
+    )
+    reconcile_pod_disruption_budget = Mock()
+    monkeypatch.setattr(
+        createregistry,
+        "reconcile_pod_disruption_budget",
+        reconcile_pod_disruption_budget,
+    )
+
+    with pytest.raises(ApiException) as excinfo:
+        call_handler(
+            createregistry.update_registry_replicas,
+            spec={"replicas": 2},
+            namespace="events",
+            name="registry",
+            logger=Mock(),
+            body={"metadata": {"labels": {"strimzi.io/cluster": "events"}}},
+        )
+
+    assert excinfo.value.status == 500
+    reconcile_pod_disruption_budget.assert_not_called()
 
 
 @pytest.mark.parametrize("invalid_registry", ["missing", "different"])
@@ -330,9 +523,10 @@ def test_client_secret_rotation_skips_untracked_registry(
 
 def mock_registry_resource_dependencies(
     monkeypatch: pytest.MonkeyPatch,
-) -> tuple[Mock, Mock, Mock]:
+) -> tuple[Mock, Mock, Mock, Mock]:
     k8s_client = Mock()
     get_deployment = Mock()
+    get_pod_disruption_budget = Mock()
     get_service = Mock()
     monkeypatch.setattr(
         createregistry,
@@ -350,9 +544,19 @@ def mock_registry_resource_dependencies(
         Mock(return_value={"metadata": {"resourceVersion": "12345"}}),
     )
     monkeypatch.setattr(createregistry, "get_deployment", get_deployment)
+    monkeypatch.setattr(
+        createregistry,
+        "get_pod_disruption_budget",
+        get_pod_disruption_budget,
+    )
     monkeypatch.setattr(createregistry, "get_service", get_service)
     monkeypatch.setattr(kopf, "adopt", Mock())
-    return k8s_client, get_deployment, get_service
+    return (
+        k8s_client,
+        get_deployment,
+        get_pod_disruption_budget,
+        get_service,
+    )
 
 
 def registry_body() -> dict[str, Any]:
@@ -368,11 +572,14 @@ def registry_body() -> dict[str, Any]:
     }
 
 
-def registry_config() -> dict[str, Any]:
+def registry_config(
+    *, replicas: int = 2, pdb_enabled: bool = True
+) -> dict[str, Any]:
     return {
         "registry_image": "confluentinc/cp-schema-registry",
         "registry_image_tag": "8.0.0",
-        "registry_replicas": 1,
+        "registry_replicas": replicas,
+        "registry_pdb_enabled": pdb_enabled,
         "registry_cpu_limit": None,
         "registry_cpu_request": None,
         "registry_mem_limit": None,
@@ -385,7 +592,9 @@ def registry_config() -> dict[str, Any]:
     }
 
 
-def create_registry_resources(k8s_client: Mock) -> None:
+def create_registry_resources(
+    k8s_client: Mock, *, replicas: int = 2, pdb_enabled: bool = True
+) -> None:
     createregistry.create_registry_resources(
         name="registry",
         namespace="events",
@@ -394,34 +603,200 @@ def create_registry_resources(k8s_client: Mock) -> None:
         k8s_client=k8s_client,
         body=registry_body(),
         logger=Mock(),
-        config=registry_config(),
+        config=registry_config(replicas=replicas, pdb_enabled=pdb_enabled),
     )
+
+
+@pytest.mark.parametrize(
+    ("replicas", "pdb_setting", "pdb_state"),
+    [
+        (1, "enabled", "present"),
+        (1, "enabled", "missing"),
+        (1, "disabled", "present"),
+        (1, "disabled", "missing"),
+        (2, "enabled", "present"),
+        (2, "enabled", "missing"),
+        (2, "disabled", "present"),
+        (2, "disabled", "missing"),
+    ],
+)
+def test_resume_registry_reconciles_availability(
+    replicas: int,
+    pdb_setting: str,
+    pdb_state: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state.cluster_name = "events"
+    enabled = pdb_setting == "enabled"
+    k8s_client, _, get_pod_disruption_budget, _ = (
+        mock_registry_resource_dependencies(monkeypatch)
+    )
+    if pdb_state == "missing":
+        get_pod_disruption_budget.side_effect = ApiException(status=404)
+    update_deployment_replicas = Mock()
+    monkeypatch.setattr(createregistry, "create_k8sclient", lambda: k8s_client)
+    monkeypatch.setattr(
+        createregistry,
+        "update_deployment_replicas",
+        update_deployment_replicas,
+    )
+
+    call_handler(
+        createregistry.resume_registry,
+        spec={
+            "replicas": replicas,
+            "podDisruptionBudgetEnabled": enabled,
+        },
+        namespace="events",
+        name="registry",
+        logger=Mock(),
+        body=registry_body(),
+    )
+
+    update_deployment_replicas.assert_called_once_with(
+        replicas=replicas,
+        k8s_client=k8s_client,
+        name="registry",
+        namespace="events",
+    )
+    policy_api = k8s_client.PolicyV1Api.return_value
+    pdb_desired = enabled and replicas >= 2
+    if not pdb_desired and pdb_state == "present":
+        policy_api.delete_namespaced_pod_disruption_budget.assert_called_once_with(
+            name="registry", namespace="events"
+        )
+        policy_api.create_namespaced_pod_disruption_budget.assert_not_called()
+    elif pdb_desired and pdb_state == "missing":
+        policy_api.create_namespaced_pod_disruption_budget.assert_called_once()
+        policy_api.delete_namespaced_pod_disruption_budget.assert_not_called()
+    else:
+        policy_api.create_namespaced_pod_disruption_budget.assert_not_called()
+        policy_api.delete_namespaced_pod_disruption_budget.assert_not_called()
 
 
 def test_existing_registry_resources_are_not_created(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    k8s_client, _, _ = mock_registry_resource_dependencies(monkeypatch)
+    k8s_client, _, _, _ = mock_registry_resource_dependencies(monkeypatch)
 
     create_registry_resources(k8s_client)
 
     k8s_client.AppsV1Api.return_value.create_namespaced_deployment.assert_not_called()
+    k8s_client.PolicyV1Api.return_value.create_namespaced_pod_disruption_budget.assert_not_called()
     k8s_client.CoreV1Api.return_value.create_namespaced_service.assert_not_called()
 
 
 def test_missing_registry_resources_are_created(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    k8s_client, get_deployment, get_service = (
+    k8s_client, get_deployment, get_pod_disruption_budget, get_service = (
         mock_registry_resource_dependencies(monkeypatch)
     )
     get_deployment.side_effect = ApiException(status=404)
+    get_pod_disruption_budget.side_effect = ApiException(status=404)
     get_service.side_effect = ApiException(status=404)
 
     create_registry_resources(k8s_client)
 
     k8s_client.AppsV1Api.return_value.create_namespaced_deployment.assert_called_once()
+    k8s_client.PolicyV1Api.return_value.create_namespaced_pod_disruption_budget.assert_called_once()
     k8s_client.CoreV1Api.return_value.create_namespaced_service.assert_called_once()
+
+
+def test_missing_pod_disruption_budget_is_created(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, _, get_pod_disruption_budget, _ = (
+        mock_registry_resource_dependencies(monkeypatch)
+    )
+    get_pod_disruption_budget.side_effect = ApiException(status=404)
+
+    create_registry_resources(k8s_client)
+
+    k8s_client.AppsV1Api.return_value.create_namespaced_deployment.assert_not_called()
+    k8s_client.PolicyV1Api.return_value.create_namespaced_pod_disruption_budget.assert_called_once()
+    k8s_client.CoreV1Api.return_value.create_namespaced_service.assert_not_called()
+
+
+def test_single_replica_registry_has_no_pod_disruption_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, _, get_pod_disruption_budget, _ = (
+        mock_registry_resource_dependencies(monkeypatch)
+    )
+    get_pod_disruption_budget.side_effect = ApiException(status=404)
+
+    create_registry_resources(k8s_client, replicas=1)
+
+    policy_api = k8s_client.PolicyV1Api.return_value
+    policy_api.create_namespaced_pod_disruption_budget.assert_not_called()
+    policy_api.delete_namespaced_pod_disruption_budget.assert_not_called()
+
+
+def test_single_replica_registry_removes_pod_disruption_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, _, _, _ = mock_registry_resource_dependencies(monkeypatch)
+
+    create_registry_resources(k8s_client, replicas=1)
+
+    k8s_client.PolicyV1Api.return_value.delete_namespaced_pod_disruption_budget.assert_called_once_with(
+        name="registry", namespace="events"
+    )
+
+
+def test_disabled_pod_disruption_budget_is_not_created(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, _, get_pod_disruption_budget, _ = (
+        mock_registry_resource_dependencies(monkeypatch)
+    )
+    get_pod_disruption_budget.side_effect = ApiException(status=404)
+
+    create_registry_resources(k8s_client, replicas=2, pdb_enabled=False)
+
+    policy_api = k8s_client.PolicyV1Api.return_value
+    policy_api.create_namespaced_pod_disruption_budget.assert_not_called()
+    policy_api.delete_namespaced_pod_disruption_budget.assert_not_called()
+
+
+def test_disabling_pod_disruption_budget_removes_existing_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, _, _, _ = mock_registry_resource_dependencies(monkeypatch)
+
+    create_registry_resources(k8s_client, replicas=2, pdb_enabled=False)
+
+    k8s_client.PolicyV1Api.return_value.delete_namespaced_pod_disruption_budget.assert_called_once_with(
+        name="registry", namespace="events"
+    )
+
+
+def test_pod_disruption_budget_delete_ignores_missing_resource(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, _, _, _ = mock_registry_resource_dependencies(monkeypatch)
+    policy_api = k8s_client.PolicyV1Api.return_value
+    policy_api.delete_namespaced_pod_disruption_budget.side_effect = (
+        ApiException(status=404)
+    )
+
+    create_registry_resources(k8s_client, replicas=1)
+
+
+def test_pod_disruption_budget_delete_errors_are_propagated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, _, _, _ = mock_registry_resource_dependencies(monkeypatch)
+    policy_api = k8s_client.PolicyV1Api.return_value
+    policy_api.delete_namespaced_pod_disruption_budget.side_effect = (
+        ApiException(status=500)
+    )
+
+    with pytest.raises(ApiException) as excinfo:
+        create_registry_resources(k8s_client, replicas=1)
+
+    assert excinfo.value.status == 500
 
 
 @pytest.mark.parametrize(
@@ -429,6 +804,11 @@ def test_missing_registry_resources_are_created(
     [
         ("deployment", ApiException(status=403)),
         ("deployment", RuntimeError("deployment lookup failed")),
+        ("pod disruption budget", ApiException(status=500)),
+        (
+            "pod disruption budget",
+            RuntimeError("pod disruption budget lookup failed"),
+        ),
         ("service", ApiException(status=500)),
         ("service", RuntimeError("service lookup failed")),
     ],
@@ -438,11 +818,13 @@ def test_registry_resource_lookup_errors_are_propagated(
     error: Exception,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    k8s_client, get_deployment, get_service = (
+    k8s_client, get_deployment, get_pod_disruption_budget, get_service = (
         mock_registry_resource_dependencies(monkeypatch)
     )
     if resource == "deployment":
         get_deployment.side_effect = error
+    elif resource == "pod disruption budget":
+        get_pod_disruption_budget.side_effect = error
     else:
         get_service.side_effect = error
 
@@ -450,4 +832,5 @@ def test_registry_resource_lookup_errors_are_propagated(
         create_registry_resources(k8s_client)
 
     k8s_client.AppsV1Api.return_value.create_namespaced_deployment.assert_not_called()
+    k8s_client.PolicyV1Api.return_value.create_namespaced_pod_disruption_budget.assert_not_called()
     k8s_client.CoreV1Api.return_value.create_namespaced_service.assert_not_called()

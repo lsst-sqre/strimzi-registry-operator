@@ -1,6 +1,12 @@
 """Helpers for interacting with Kubernetes APIs."""
 
-__all__ = ("create_k8sclient", "get_deployment", "get_secret", "get_service")
+__all__ = (
+    "create_k8sclient",
+    "get_deployment",
+    "get_pod_disruption_budget",
+    "get_secret",
+    "get_service",
+)
 
 import json
 from typing import Any
@@ -92,6 +98,45 @@ def get_service(
 
     api = k8s_client.CoreV1Api()
     result = api.read_namespaced_service(
+        name=name, namespace=namespace, _preload_content=preload_content
+    )
+    if raw:
+        return json.loads(result.data)
+    else:
+        return result
+
+
+def get_pod_disruption_budget(
+    *,
+    namespace: str,
+    name: str,
+    k8s_client: Any,
+    raw: bool = True,
+) -> dict[str, Any] | Any:
+    """Get a PodDisruptionBudget resource.
+
+    Parameters
+    ----------
+    namespace : `str`
+        The Kubernetes namespace where the Schema Registry operates.
+    name : `str`
+        The name of the PodDisruptionBudget.
+    k8s_client
+        A Kubernetes client (see `create_k8sclient`).
+    raw : `bool`
+        If `True`, the raw Kubernetes manifest is returned as a `dict`.
+        Otherwise the Python object representation of the resource is returned.
+
+    Returns
+    -------
+    pod_disruption_budget
+        The Kubernetes PodDisruptionBudget resource either as a `dict` or an
+        object.
+    """
+    preload_content = not raw
+
+    api = k8s_client.PolicyV1Api()
+    result = api.read_namespaced_pod_disruption_budget(
         name=name, namespace=namespace, _preload_content=preload_content
     )
     if raw:
