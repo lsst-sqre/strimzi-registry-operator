@@ -7,6 +7,7 @@ __all__ = (
     "resume_registry",
     "start_operator",
     "update_registry_group_id",
+    "update_registry_pod_disruption_budget",
     "update_registry_replicas",
 )
 
@@ -15,6 +16,7 @@ from strimziregistryoperator.handlers.createregistry import (
     delete_registry,
     resume_registry,
     update_registry_group_id,
+    update_registry_pod_disruption_budget,
     update_registry_replicas,
 )
 from strimziregistryoperator.handlers.secretwatcher import handle_secret_change

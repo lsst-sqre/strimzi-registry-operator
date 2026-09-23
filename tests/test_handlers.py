@@ -162,6 +162,18 @@ def test_parse_registry_spec_replicas(
     assert config["registry_replicas"] == expected
 
 
+@pytest.mark.parametrize(
+    ("spec", "expected_state"),
+    [({}, "enabled"), ({"podDisruptionBudgetEnabled": False}, "disabled")],
+)
+def test_parse_registry_spec_pod_disruption_budget(
+    spec: dict[str, bool], expected_state: str
+) -> None:
+    config = createregistry.parse_registry_spec(spec, "registry", Mock())
+
+    assert config["registry_pdb_enabled"] is (expected_state == "enabled")
+
+
 @pytest.mark.parametrize("replicas", [0, -1])
 def test_parse_registry_spec_rejects_invalid_replicas(replicas: int) -> None:
     with pytest.raises(kopf.PermanentError, match="at least one replica"):
@@ -284,6 +296,7 @@ def test_update_registry_replicas(
     )
     reconcile_pod_disruption_budget.assert_called_once_with(
         replicas=replicas,
+        enabled=True,
         name="registry",
         namespace="events",
         k8s_client=k8s_client,
@@ -291,6 +304,54 @@ def test_update_registry_replicas(
         logger=logger,
     )
     assert calls == ["deployment", "pdb"]
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_update_registry_pod_disruption_budget(
+    *, enabled: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state.cluster_name = "events"
+    k8s_client = Mock()
+    logger = Mock()
+    body = {"metadata": {"labels": {"strimzi.io/cluster": "events"}}}
+    update_deployment_replicas = Mock()
+    reconcile_pod_disruption_budget = Mock()
+    monkeypatch.setattr(createregistry, "create_k8sclient", lambda: k8s_client)
+    monkeypatch.setattr(
+        createregistry,
+        "update_deployment_replicas",
+        update_deployment_replicas,
+    )
+    monkeypatch.setattr(
+        createregistry,
+        "reconcile_pod_disruption_budget",
+        reconcile_pod_disruption_budget,
+    )
+
+    call_handler(
+        createregistry.update_registry_pod_disruption_budget,
+        spec={"replicas": 2, "podDisruptionBudgetEnabled": enabled},
+        namespace="events",
+        name="registry",
+        logger=logger,
+        body=body,
+    )
+
+    update_deployment_replicas.assert_called_once_with(
+        replicas=2,
+        k8s_client=k8s_client,
+        name="registry",
+        namespace="events",
+    )
+    reconcile_pod_disruption_budget.assert_called_once_with(
+        replicas=2,
+        enabled=enabled,
+        name="registry",
+        namespace="events",
+        k8s_client=k8s_client,
+        body=body,
+        logger=logger,
+    )
 
 
 def test_update_registry_replicas_ignores_different_cluster(
@@ -511,11 +572,14 @@ def registry_body() -> dict[str, Any]:
     }
 
 
-def registry_config(*, replicas: int = 2) -> dict[str, Any]:
+def registry_config(
+    *, replicas: int = 2, pdb_enabled: bool = True
+) -> dict[str, Any]:
     return {
         "registry_image": "confluentinc/cp-schema-registry",
         "registry_image_tag": "8.0.0",
         "registry_replicas": replicas,
+        "registry_pdb_enabled": pdb_enabled,
         "registry_cpu_limit": None,
         "registry_cpu_request": None,
         "registry_mem_limit": None,
@@ -528,7 +592,9 @@ def registry_config(*, replicas: int = 2) -> dict[str, Any]:
     }
 
 
-def create_registry_resources(k8s_client: Mock, *, replicas: int = 2) -> None:
+def create_registry_resources(
+    k8s_client: Mock, *, replicas: int = 2, pdb_enabled: bool = True
+) -> None:
     createregistry.create_registry_resources(
         name="registry",
         namespace="events",
@@ -537,20 +603,31 @@ def create_registry_resources(k8s_client: Mock, *, replicas: int = 2) -> None:
         k8s_client=k8s_client,
         body=registry_body(),
         logger=Mock(),
-        config=registry_config(replicas=replicas),
+        config=registry_config(replicas=replicas, pdb_enabled=pdb_enabled),
     )
 
 
 @pytest.mark.parametrize(
-    ("replicas", "pdb_state"),
-    [(1, "present"), (1, "missing"), (2, "missing"), (2, "present")],
+    ("replicas", "pdb_setting", "pdb_state"),
+    [
+        (1, "enabled", "present"),
+        (1, "enabled", "missing"),
+        (1, "disabled", "present"),
+        (1, "disabled", "missing"),
+        (2, "enabled", "present"),
+        (2, "enabled", "missing"),
+        (2, "disabled", "present"),
+        (2, "disabled", "missing"),
+    ],
 )
 def test_resume_registry_reconciles_availability(
     replicas: int,
+    pdb_setting: str,
     pdb_state: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     state.cluster_name = "events"
+    enabled = pdb_setting == "enabled"
     k8s_client, _, get_pod_disruption_budget, _ = (
         mock_registry_resource_dependencies(monkeypatch)
     )
@@ -566,7 +643,10 @@ def test_resume_registry_reconciles_availability(
 
     call_handler(
         createregistry.resume_registry,
-        spec={"replicas": replicas},
+        spec={
+            "replicas": replicas,
+            "podDisruptionBudgetEnabled": enabled,
+        },
         namespace="events",
         name="registry",
         logger=Mock(),
@@ -580,12 +660,13 @@ def test_resume_registry_reconciles_availability(
         namespace="events",
     )
     policy_api = k8s_client.PolicyV1Api.return_value
-    if replicas == 1 and pdb_state == "present":
+    pdb_desired = enabled and replicas >= 2
+    if not pdb_desired and pdb_state == "present":
         policy_api.delete_namespaced_pod_disruption_budget.assert_called_once_with(
             name="registry", namespace="events"
         )
         policy_api.create_namespaced_pod_disruption_budget.assert_not_called()
-    elif replicas >= 2 and pdb_state == "missing":
+    elif pdb_desired and pdb_state == "missing":
         policy_api.create_namespaced_pod_disruption_budget.assert_called_once()
         policy_api.delete_namespaced_pod_disruption_budget.assert_not_called()
     else:
@@ -658,6 +739,33 @@ def test_single_replica_registry_removes_pod_disruption_budget(
     k8s_client, _, _, _ = mock_registry_resource_dependencies(monkeypatch)
 
     create_registry_resources(k8s_client, replicas=1)
+
+    k8s_client.PolicyV1Api.return_value.delete_namespaced_pod_disruption_budget.assert_called_once_with(
+        name="registry", namespace="events"
+    )
+
+
+def test_disabled_pod_disruption_budget_is_not_created(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, _, get_pod_disruption_budget, _ = (
+        mock_registry_resource_dependencies(monkeypatch)
+    )
+    get_pod_disruption_budget.side_effect = ApiException(status=404)
+
+    create_registry_resources(k8s_client, replicas=2, pdb_enabled=False)
+
+    policy_api = k8s_client.PolicyV1Api.return_value
+    policy_api.create_namespaced_pod_disruption_budget.assert_not_called()
+    policy_api.delete_namespaced_pod_disruption_budget.assert_not_called()
+
+
+def test_disabling_pod_disruption_budget_removes_existing_budget(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    k8s_client, _, _, _ = mock_registry_resource_dependencies(monkeypatch)
+
+    create_registry_resources(k8s_client, replicas=2, pdb_enabled=False)
 
     k8s_client.PolicyV1Api.return_value.delete_namespaced_pod_disruption_budget.assert_called_once_with(
         name="registry", namespace="events"

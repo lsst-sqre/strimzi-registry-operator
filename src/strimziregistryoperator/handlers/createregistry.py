@@ -10,6 +10,7 @@ __all__ = (
     "register_registry_name",
     "resume_registry",
     "update_registry_group_id",
+    "update_registry_pod_disruption_budget",
     "update_registry_replicas",
 )
 
@@ -178,6 +179,31 @@ def update_registry_replicas(
     )
 
 
+@kopf.on.update(  # type: ignore[arg-type]
+    "roundtable.lsst.codes",
+    "v1beta1",
+    "strimzischemaregistries",
+    field="spec.podDisruptionBudgetEnabled",
+)
+def update_registry_pod_disruption_budget(
+    *,
+    spec: dict[str, Any],
+    namespace: str,
+    name: str,
+    logger: Any,
+    body: dict[str, Any],
+    **kwargs: Any,
+) -> None:
+    """Update disruption protection for a Schema Registry."""
+    _reconcile_registry_availability(
+        spec=spec,
+        name=name,
+        namespace=namespace,
+        body=body,
+        logger=logger,
+    )
+
+
 @kopf.on.resume(  # type: ignore[arg-type]
     "roundtable.lsst.codes", "v1beta1", "strimzischemaregistries"
 )
@@ -223,6 +249,7 @@ def _reconcile_registry_availability(
         return
 
     replicas = get_registry_replicas(spec, name)
+    pdb_enabled = spec.get("podDisruptionBudgetEnabled", True)
     k8s_client = create_k8sclient()
     update_deployment_replicas(
         replicas=replicas,
@@ -232,6 +259,7 @@ def _reconcile_registry_availability(
     )
     reconcile_pod_disruption_budget(
         replicas=replicas,
+        enabled=pdb_enabled,
         name=name,
         namespace=namespace,
         k8s_client=k8s_client,
@@ -285,6 +313,7 @@ def parse_registry_spec(
         ),
         "registry_image_tag": spec.get("registryImageTag", "8.0.0"),
         "registry_replicas": registry_replicas,
+        "registry_pdb_enabled": spec.get("podDisruptionBudgetEnabled", True),
         "registry_cpu_limit": get_nullable(spec, "cpuLimit"),
         "registry_cpu_request": get_nullable(spec, "cpuRequest"),
         "registry_mem_limit": get_nullable(spec, "memoryLimit"),
@@ -437,6 +466,7 @@ def create_registry_resources(
 
     reconcile_pod_disruption_budget(
         replicas=config["registry_replicas"],
+        enabled=config["registry_pdb_enabled"],
         name=name,
         namespace=namespace,
         k8s_client=k8s_client,
@@ -465,6 +495,7 @@ def create_registry_resources(
 def reconcile_pod_disruption_budget(
     *,
     replicas: int,
+    enabled: bool,
     name: str,
     namespace: str,
     k8s_client: Any,
@@ -473,9 +504,9 @@ def reconcile_pod_disruption_budget(
 ) -> None:
     """Reconcile the PodDisruptionBudget for a Schema Registry.
 
-    A multi-replica registry gets a PodDisruptionBudget that preserves one
-    available replica. A single-replica registry does not get a budget because
-    that would prevent voluntary eviction of its only pod.
+    An enabled, multi-replica registry gets a PodDisruptionBudget that
+    preserves one available replica. Disabled and single-replica registries do
+    not get a budget.
     """
     try:
         get_pod_disruption_budget(
@@ -489,7 +520,7 @@ def reconcile_pod_disruption_budget(
             raise
 
     policy_api = k8s_client.PolicyV1Api()
-    if replicas >= 2:
+    if enabled and replicas >= 2:
         if pdb_exists:
             logger.info("PodDisruptionBudget already exists")
             return
