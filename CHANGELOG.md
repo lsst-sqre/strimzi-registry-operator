@@ -1,11 +1,14 @@
 # Change log
 
-## Unreleased
+## 0.8.0 (2026-09-23)
 
 - Schema Registry deployments now default to two replicas and use a
   PodDisruptionBudget when configured with two or more replicas. Explicit
   single-replica deployments remain supported without a PodDisruptionBudget,
   and the budget can be disabled with `spec.podDisruptionBudgetEnabled`.
+- Add a configurable Schema Registry consumer group ID and reconcile group ID changes on existing deployments.
+- Harden Registry Reconciliation and Certificate Rotation
+- Refresh the operator codebase
 
 ## 0.7.1 (2025-09-29)
 
